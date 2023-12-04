@@ -1,5 +1,6 @@
 use regex::Regex;
 use std::cmp::{max, min};
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -279,6 +280,87 @@ fn day3_2() {
     println!("sum: {}", gear_ratio_sum / 2);
 }
 
+fn day4_1() {
+    let file = File::open(Path::new("inp4_2.txt")).unwrap();
+
+    let sum: i64 = io::BufReader::new(file)
+        .lines()
+        .map(|l| {
+            let line = l.unwrap();
+            let mut parts = line.splitn(3, |c| c == ':' || c == '|');
+            let card_no_txt = parts.next().unwrap();
+
+            fn parse_nos(no_str: &str) -> HashSet<i64> {
+                return no_str
+                    .split_whitespace()
+                    .map(|s| s.trim().parse::<i64>().unwrap())
+                    .collect();
+            }
+
+            let winning_nos = parse_nos(parts.next().unwrap());
+            let card_nos = parse_nos(parts.next().unwrap());
+
+            let winning_on_card = card_nos.intersection(&winning_nos);
+            let winning_count = winning_on_card.count();
+            let card_val = if winning_count == 0 {
+                0
+            } else {
+                (2 as i64).pow((winning_count as u32) - 1)
+            };
+            return card_val;
+        })
+        .sum();
+
+    println!("{}", sum);
+}
+
+fn day4_2() {
+    let file = File::open(Path::new("inp4_2.txt")).unwrap();
+
+    let mut card_counts: Vec<i64> = Vec::new();
+
+    let lines: Vec<String> = io::BufReader::new(file)
+        .lines()
+        .map(|l| l.unwrap())
+        .collect();
+    card_counts.resize(lines.len(), 1);
+
+    for line in lines {
+        let mut parts = line.splitn(3, |c| c == ':' || c == '|');
+        let card_no = parts
+            .next()
+            .unwrap()
+            .split_whitespace()
+            .next_back()
+            .unwrap()
+            .parse::<usize>()
+            .unwrap()
+            - 1;
+
+        fn parse_nos(no_str: &str) -> HashSet<i64> {
+            return no_str
+                .split_whitespace()
+                .map(|s| s.trim().parse::<i64>().unwrap())
+                .collect();
+        }
+
+        let winning_nos = parse_nos(parts.next().unwrap());
+        let card_nos = parse_nos(parts.next().unwrap());
+
+        let winning_on_card = card_nos.intersection(&winning_nos);
+        let winning_count = winning_on_card.count();
+
+        let this_card_count = card_counts[card_no];
+        for i in 0..winning_count {
+            card_counts[card_no + 1 + i] += this_card_count;
+        }
+    }
+
+    let sum: i64 = card_counts.iter().sum();
+
+    println!("{}", sum);
+}
+
 fn main() {
-    day3_2();
+    day4_2();
 }
