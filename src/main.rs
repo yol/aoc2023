@@ -1,6 +1,6 @@
 use regex::Regex;
 use std::cmp::{max, min};
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -361,6 +361,259 @@ fn day4_2() {
     println!("{}", sum);
 }
 
+fn day5_1() {
+    let file = File::open(Path::new("inp5_2.txt")).unwrap();
+
+    struct DestRule {
+        start: i64,
+        length: i64,
+    }
+
+    struct ConvMap {
+        source_type: String,
+        dest_type: String,
+        rules_source_to_dest: BTreeMap<i64, DestRule>,
+    }
+
+    let mut maps: Vec<ConvMap> = Vec::new();
+
+    let mut lines = io::BufReader::new(file).lines();
+
+    let seed_line = lines.next().unwrap().unwrap();
+    let seeds: Vec<i64> = seed_line
+        .split_once(':')
+        .unwrap()
+        .1
+        .split_whitespace()
+        .map(|s| s.parse::<i64>().unwrap())
+        .collect();
+
+    for line_w in lines {
+        let line = line_w.unwrap();
+        if line.is_empty() {
+            continue;
+        }
+
+        let dash_parts: Vec<&str> = line.split('-').collect();
+        if dash_parts.len() > 1 {
+            let map = ConvMap {
+                source_type: dash_parts[0].to_string(),
+                dest_type: dash_parts[2].split_once(' ').unwrap().0.to_string(),
+                rules_source_to_dest: BTreeMap::new(),
+            };
+            maps.push(map);
+            continue;
+        }
+
+        let mut current_map = maps.last_mut().unwrap();
+        let mut line_parts = line.split_whitespace();
+        let dest_start = line_parts.next().unwrap().parse().unwrap();
+        let src_start = line_parts.next().unwrap().parse().unwrap();
+        let range_len = line_parts.next().unwrap().parse().unwrap();
+
+        current_map.rules_source_to_dest.insert(
+            src_start,
+            DestRule {
+                start: dest_start,
+                length: range_len,
+            },
+        );
+    }
+
+    let min_loc = seeds
+        .iter()
+        .map(|seed| {
+            let mut cur_type = "seed".to_string();
+            let mut cur_no = *seed;
+
+            loop {
+                let next_map = maps.iter().find(|m| m.source_type == cur_type).unwrap();
+
+                let rule = next_map
+                    .rules_source_to_dest
+                    .iter()
+                    .find(|r| cur_no >= *r.0 && cur_no < r.0 + r.1.length);
+
+                if rule.is_some() {
+                    let rule_val = rule.unwrap();
+                    let no_in_range = cur_no - rule_val.0;
+                    cur_no = rule_val.1.start + no_in_range;
+                }
+
+                cur_type = next_map.dest_type.clone();
+
+                if cur_type == "location" {
+                    println!("OK: seed {} -> location {}", seed, cur_no);
+                    return Some(cur_no);
+                }
+            }
+        })
+        .filter(|l| l.is_some())
+        .map(|o| o.unwrap())
+        .min()
+        .unwrap();
+
+    println!("min loc: {}", min_loc);
+}
+
+fn day5_2() {
+    let file = File::open(Path::new("inp5_2.txt")).unwrap();
+
+    #[derive(Copy, Clone, Debug)]
+    struct Range {
+        start: i64,
+        length: i64,
+    }
+    impl Range {
+        fn move_forward(&mut self, amount: i64) {
+            self.start += amount;
+            self.length -= amount;
+            assert!(self.length >= 0);
+        }
+        fn is_empty(&self) -> bool {
+            return self.length == 0;
+        }
+        fn overlaps(&self, other: &Range) -> bool {
+            return (self.start >= other.start && self.start < other.start + other.length)
+                || (self.start + self.length >= other.start
+                    && self.start + self.length < other.start);
+        }
+    }
+
+    struct ConvMap {
+        source_type: String,
+        dest_type: String,
+        rules_source_to_dest: BTreeMap<i64, Range>,
+    }
+
+    let mut maps: Vec<ConvMap> = Vec::new();
+
+    let mut lines = io::BufReader::new(file).lines();
+
+    let seed_line = lines.next().unwrap().unwrap();
+    let seeds: Vec<i64> = seed_line
+        .split_once(':')
+        .unwrap()
+        .1
+        .split_whitespace()
+        .map(|s| s.parse::<i64>().unwrap())
+        .collect();
+
+    for line_w in lines {
+        let line = line_w.unwrap();
+        if line.is_empty() {
+            continue;
+        }
+
+        let dash_parts: Vec<&str> = line.split('-').collect();
+        if dash_parts.len() > 1 {
+            let map = ConvMap {
+                source_type: dash_parts[0].to_string(),
+                dest_type: dash_parts[2].split_once(' ').unwrap().0.to_string(),
+                rules_source_to_dest: BTreeMap::new(),
+            };
+            maps.push(map);
+            continue;
+        }
+
+        let mut current_map = maps.last_mut().unwrap();
+        let mut line_parts = line.split_whitespace();
+        let dest_start = line_parts.next().unwrap().parse().unwrap();
+        let src_start = line_parts.next().unwrap().parse().unwrap();
+        let range_len = line_parts.next().unwrap().parse().unwrap();
+
+        current_map.rules_source_to_dest.insert(
+            src_start,
+            Range {
+                start: dest_start,
+                length: range_len,
+            },
+        );
+    }
+
+    let loc_ranges = seeds.chunks_exact(2).flat_map(|seed| {
+        let mut cur_type = "seed".to_string();
+        let mut cur_ranges: Vec<Range> = Vec::new();
+        cur_ranges.push(Range {
+            start: seed[0],
+            length: seed[1],
+        });
+
+        loop {
+            let next_map = maps.iter().find(|m| m.source_type == cur_type).unwrap();
+
+            let mut next_ranges: Vec<Range> = Vec::new();
+
+            for range in cur_ranges {
+                let mut remaining_range = range;
+
+                println!(
+                    "{} -> {} for range {:?}",
+                    cur_type, next_map.dest_type, range
+                );
+
+                while !remaining_range.is_empty() {
+                    let next_rule = next_map
+                        .rules_source_to_dest
+                        .iter() // should be sorted by key?
+                        .find(|r| {
+                            remaining_range.overlaps(&Range {
+                                start: *r.0,
+                                length: r.1.length,
+                            })
+                        });
+
+                    match next_rule {
+                        None => {
+                            // Ran out of rules
+                            next_ranges.push(remaining_range);
+                            break;
+                        }
+                        Some(next_rule) => {
+                            let remainder_before = next_rule.0 - remaining_range.start;
+                            if remainder_before > 0 {
+                                // Unmapped space before next rule
+                                next_ranges.push(Range {
+                                    start: remaining_range.start,
+                                    length: remainder_before,
+                                });
+                                // Reduce scope
+                                remaining_range.move_forward(remainder_before);
+                            }
+                            // Mapped space
+                            let offset_to_rule = remaining_range.start - next_rule.0;
+                            assert!(offset_to_rule >= 0);
+                            let mapped_length =
+                                min(next_rule.1.length - offset_to_rule, remaining_range.length);
+                            next_ranges.push(Range {
+                                start: next_rule.1.start + offset_to_rule,
+                                length: mapped_length,
+                            });
+                            // Reduce scope
+                            remaining_range.move_forward(mapped_length);
+                        }
+                    }
+                }
+            }
+            println!(" yielded ranges: {:?}", next_ranges);
+
+            cur_ranges = next_ranges;
+
+            cur_type = next_map.dest_type.clone();
+
+            if cur_type == "location" {
+                break;
+            }
+        }
+
+        return cur_ranges;
+    });
+
+    let min_loc = loc_ranges.map(|r| r.start).min().unwrap();
+
+    println!("min loc: {}", min_loc);
+}
+
 fn main() {
-    day4_2();
+    day5_2();
 }
