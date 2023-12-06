@@ -614,6 +614,94 @@ fn day5_2() {
     println!("min loc: {}", min_loc);
 }
 
+fn day6_1() {
+    let file = File::open(Path::new("inp6_2.txt")).unwrap();
+    let mut lines = io::BufReader::new(file).lines();
+
+    let times: Vec<i64> = lines
+        .next()
+        .unwrap()
+        .unwrap()
+        .split_whitespace()
+        .skip(1)
+        .map(|t| t.parse::<i64>().unwrap())
+        .collect();
+
+    let distances: Vec<i64> = lines
+        .next()
+        .unwrap()
+        .unwrap()
+        .split_whitespace()
+        .skip(1)
+        .map(|t| t.parse::<i64>().unwrap())
+        .collect();
+
+    let races = times.iter().zip(distances.iter());
+
+    let ways_to_win_per_race = races.map(|race| {
+        let time = *race.0;
+        let best_distance = *race.1;
+        let win_distances = (1..time)
+            .map(|charge_time| {
+                let travel_time = time - charge_time;
+                let speed = charge_time;
+                let d = speed * travel_time;
+                println!("     {}", d);
+                return d;
+            })
+            .filter(|d| *d > best_distance);
+        let no_win_distances = win_distances.count();
+        println!("- {}", no_win_distances);
+        return no_win_distances as i64;
+    });
+
+    let solution: i64 = ways_to_win_per_race.product();
+    println!("{}", solution);
+}
+
+fn day6_2() {
+    let file = File::open(Path::new("inp6_2.txt")).unwrap();
+    let mut lines = io::BufReader::new(file).lines();
+
+    let times: Vec<i64> = lines
+        .next()
+        .unwrap()
+        .unwrap()
+        .replace(" ", "")
+        .split(':')
+        .skip(1)
+        .map(|t| t.parse::<i64>().unwrap())
+        .collect();
+
+    let distances: Vec<i64> = lines
+        .next()
+        .unwrap()
+        .unwrap()
+        .replace(" ", "")
+        .split(':')
+        .skip(1)
+        .map(|t| t.parse::<i64>().unwrap())
+        .collect();
+
+    let races = times.iter().zip(distances.iter());
+
+    let ways_to_win_per_race = races.map(|race| {
+        let time = *race.0;
+        let best_distance = *race.1;
+
+        let det = ((time * time - 4 * best_distance) as f64).sqrt();
+        let min_charge_time = ((time as f64 - det) / 2.0).ceil() as i64;
+        let max_charge_time = ((time as f64 + det) / 2.0).floor() as i64;
+
+        let no_win_distances = max_charge_time - min_charge_time + 1;
+        println!("- {}", no_win_distances);
+        return no_win_distances as i64;
+    });
+
+    let solution: i64 = ways_to_win_per_race.product();
+    println!("{}", solution);
+}
+
 fn main() {
-    day5_2();
+    day6_2();
 }
