@@ -1,5 +1,5 @@
 use regex::Regex;
-use std::cmp::{max, min};
+use std::cmp::{max, min, Ordering};
 use std::collections::{BTreeMap, HashSet};
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -622,7 +622,8 @@ fn day6_1() {
         .next()
         .unwrap()
         .unwrap()
-        .split_whitespace()
+        .replace(" ", "")
+        .split(':')
         .skip(1)
         .map(|t| t.parse::<i64>().unwrap())
         .collect();
@@ -631,7 +632,8 @@ fn day6_1() {
         .next()
         .unwrap()
         .unwrap()
-        .split_whitespace()
+        .replace(" ", "")
+        .split(':')
         .skip(1)
         .map(|t| t.parse::<i64>().unwrap())
         .collect();
@@ -646,12 +648,12 @@ fn day6_1() {
                 let travel_time = time - charge_time;
                 let speed = charge_time;
                 let d = speed * travel_time;
-                println!("     {}", d);
+                //println!("     {}", d);
                 return d;
             })
             .filter(|d| *d > best_distance);
         let no_win_distances = win_distances.count();
-        println!("- {}", no_win_distances);
+        //println!("- {}", no_win_distances);
         return no_win_distances as i64;
     });
 
@@ -702,6 +704,375 @@ fn day6_2() {
     println!("{}", solution);
 }
 
+fn day7_1() {
+    let file = File::open(Path::new("inp7_2.txt")).unwrap();
+    let mut lines = io::BufReader::new(file).lines();
+
+    #[derive(Eq, PartialEq, PartialOrd, Ord, Debug)]
+    enum HandType {
+        FiveOfAKind = 7,
+        FourOfAKind = 6,
+        FullHouse = 5,
+        ThreeOfAKind = 4,
+        TwoPair = 3,
+        OnePair = 2,
+        HighCard = 1,
+    }
+    type Hand = Vec<i32>;
+
+    fn determine_hand_type(hand: &Hand) -> HandType {
+        let mut hand_bins = BTreeMap::new();
+        for card in hand {
+            let def = 0;
+            let old_val = hand_bins.get(&card).unwrap_or(&def);
+            hand_bins.insert(card, old_val + 1);
+        }
+        if hand_bins.values().any(|count| *count == 5) {
+            return HandType::FiveOfAKind;
+        }
+        if hand_bins.values().any(|count| *count == 4) {
+            return HandType::FourOfAKind;
+        }
+        let pairs = hand_bins.values().filter(|count| **count == 2);
+        let pair_count = pairs.count();
+        if hand_bins.values().any(|count| *count == 3) {
+            if pair_count == 1 {
+                return HandType::FullHouse;
+            }
+            return HandType::ThreeOfAKind;
+        }
+        if pair_count == 2 {
+            return HandType::TwoPair;
+        }
+        if pair_count == 1 {
+            return HandType::OnePair;
+        }
+        return HandType::HighCard;
+    }
+
+    fn parse_hand(hand: &str) -> Hand {
+        return hand
+            .chars()
+            .map(|c| {
+                return match c {
+                    '2' => 2,
+                    '3' => 3,
+                    '4' => 4,
+                    '5' => 5,
+                    '6' => 6,
+                    '7' => 7,
+                    '8' => 8,
+                    '9' => 9,
+                    'T' => 10,
+                    'J' => 11,
+                    'Q' => 12,
+                    'K' => 13,
+                    'A' => 14,
+                    _ => panic!(),
+                };
+            })
+            .collect();
+    }
+
+    #[derive(Debug)]
+    struct ParsedHand {
+        hand: Hand,
+        hand_type: HandType,
+        bid: i64,
+    }
+
+    let mut all_hands: Vec<ParsedHand> = lines
+        .map(|l_| {
+            let l = l_.unwrap();
+            let split = l.split_once(' ').unwrap();
+            let hand_str = split.0;
+            let hand = parse_hand(hand_str);
+            let hand_type = determine_hand_type(&hand);
+            let bid = split.1;
+
+            return ParsedHand {
+                hand: hand,
+                hand_type: hand_type,
+                bid: bid.parse().unwrap(),
+            };
+        })
+        .collect();
+
+    for hand in &all_hands {
+        println!("- {:?}", hand);
+    }
+    println!("---");
+
+    all_hands.sort_unstable_by(|a, b| {
+        if a.hand_type == b.hand_type {
+            let first_ineq_card = a
+                .hand
+                .iter()
+                .zip(b.hand.iter())
+                .find(|(card_a, card_b)| card_a != card_b)
+                .unwrap();
+
+            return first_ineq_card.0.cmp(first_ineq_card.1);
+        }
+        return a.hand_type.cmp(&b.hand_type);
+    });
+
+    for hand in &all_hands {
+        println!("- {:?}", hand);
+    }
+    let sum = all_hands.iter().enumerate().fold(0 as i64, |acc, e| {
+        let rank = e.0 + 1;
+        return acc + (rank as i64) * e.1.bid;
+    });
+    println!("{}", sum);
+}
+
+fn day7_2() {
+    let file = File::open(Path::new("inp7_2.txt")).unwrap();
+    let lines = io::BufReader::new(file).lines();
+
+    #[derive(Eq, PartialEq, PartialOrd, Ord, Debug)]
+    enum HandType {
+        FiveOfAKind = 7,
+        FourOfAKind = 6,
+        FullHouse = 5,
+        ThreeOfAKind = 4,
+        TwoPair = 3,
+        OnePair = 2,
+        HighCard = 1,
+    }
+    type Hand = Vec<i32>;
+
+    fn determine_hand_type(hand: &Hand) -> HandType {
+        let mut hand_bins = BTreeMap::new();
+        let def = 0;
+        let mut jokers = 0;
+        for card in hand {
+            if *card == 1 {
+                jokers += 1;
+            } else {
+                // FIXME ugly
+                let old_val = hand_bins.get(&card).unwrap_or(&def);
+                hand_bins.insert(card, old_val + 1);
+            }
+        }
+        let mut best_card = 0;
+        let mut best_card_count = 0;
+        // FIXME this is ugly
+        for (c, v) in &hand_bins {
+            if *v > best_card_count {
+                best_card_count = *v;
+                best_card = **c;
+            }
+        }
+        hand_bins.insert(&best_card, best_card_count + jokers);
+        if hand_bins.values().any(|count| *count == 5) {
+            return HandType::FiveOfAKind;
+        }
+        if hand_bins.values().any(|count| *count == 4) {
+            return HandType::FourOfAKind;
+        }
+        let pairs = hand_bins.values().filter(|count| **count == 2);
+        let pair_count = pairs.count();
+        if hand_bins.values().any(|count| *count == 3) {
+            if pair_count == 1 {
+                return HandType::FullHouse;
+            }
+            return HandType::ThreeOfAKind;
+        }
+        if pair_count == 2 {
+            return HandType::TwoPair;
+        }
+        if pair_count == 1 {
+            return HandType::OnePair;
+        }
+        return HandType::HighCard;
+    }
+
+    fn parse_hand(hand: &str) -> Hand {
+        return hand
+            .chars()
+            .map(|c| {
+                return match c {
+                    '2' => 2,
+                    '3' => 3,
+                    '4' => 4,
+                    '5' => 5,
+                    '6' => 6,
+                    '7' => 7,
+                    '8' => 8,
+                    '9' => 9,
+                    'T' => 10,
+                    'J' => 1,
+                    'Q' => 12,
+                    'K' => 13,
+                    'A' => 14,
+                    _ => panic!(),
+                };
+            })
+            .collect();
+    }
+
+    #[derive(Debug)]
+    struct ParsedHand {
+        hand: Hand,
+        hand_text: String,
+        hand_type: HandType,
+        bid: i64,
+    }
+
+    let mut all_hands: Vec<ParsedHand> = lines
+        .map(|l_| {
+            let l = l_.unwrap();
+            let split = l.split_once(' ').unwrap();
+            let hand_str = split.0;
+            let hand = parse_hand(hand_str);
+            let hand_type = determine_hand_type(&hand);
+            let bid = split.1;
+
+            return ParsedHand {
+                hand,
+                hand_text: hand_str.to_string(),
+                hand_type,
+                bid: bid.parse().unwrap(),
+            };
+        })
+        .collect();
+
+    for hand in &all_hands {
+        println!("- {:?}", hand);
+    }
+    println!("---");
+
+    all_hands.sort_unstable_by(|a, b| {
+        if a.hand_type == b.hand_type {
+            return a.hand.cmp(&b.hand);
+        }
+        return a.hand_type.cmp(&b.hand_type);
+    });
+
+    for hand in &all_hands {
+        println!("- {:?}", hand);
+    }
+    let sum = all_hands.iter().enumerate().fold(0 as i64, |acc, e| {
+        let rank = e.0 + 1;
+        return acc + (rank as i64) * e.1.bid;
+    });
+    println!("{}", sum);
+}
+
+fn day8_1() {
+    let file = File::open(Path::new("inp8_2.txt")).unwrap();
+    let mut lines = io::BufReader::new(file).lines();
+
+    let lr: Vec<_> = lines.next().unwrap().unwrap().chars().collect();
+    let mut lr_iter = lr.iter().cycle();
+    lines.next();
+
+    let instr_re = Regex::new(r"^(\w+) = \((\w+), (\w+)\)$").unwrap();
+
+    struct Node {
+        next_l: String,
+        next_r: String,
+    }
+
+    let mut node_map: BTreeMap<String, Node> = BTreeMap::new();
+
+    for line in lines {
+        let instr = line.unwrap();
+        let instr_s = instr.as_str();
+        let (_, [this_node, next_node_l, next_node_r]) =
+            instr_re.captures(&instr_s).unwrap().extract();
+        node_map.insert(
+            this_node.to_string(),
+            Node {
+                next_l: next_node_l.to_string(),
+                next_r: next_node_r.to_string(),
+            },
+        );
+    }
+
+    let mut cur_node = "AAA".to_string();
+    let mut steps = 0;
+    while cur_node != "ZZZ" {
+        let instr = node_map.get(cur_node.as_str()).unwrap();
+        let next_lr = lr_iter.next().unwrap();
+        cur_node = match next_lr {
+            'L' => &instr.next_l,
+            'R' => &instr.next_r,
+            _ => panic!(),
+        }
+        .to_string();
+        steps += 1;
+    }
+    println!("{}", steps);
+}
+
+fn day8_2() {
+    let file = File::open(Path::new("inp8_3.txt")).unwrap();
+    let mut lines = io::BufReader::new(file).lines();
+
+    let lr: Vec<_> = lines.next().unwrap().unwrap().chars().collect();
+    let mut lr_iter = lr.iter().cycle();
+    lines.next();
+
+    let instr_re = Regex::new(r"^(\w+) = \((\w+), (\w+)\)$").unwrap();
+
+    #[derive(Debug)]
+    struct Node {
+        next_l: String,
+        next_r: String,
+    }
+
+    let mut node_map: BTreeMap<String, Node> = BTreeMap::new();
+
+    for line in lines {
+        let instr = line.unwrap();
+        let instr_s = instr.as_str();
+        let (_, [this_node, next_node_l, next_node_r]) =
+            instr_re.captures(&instr_s).unwrap().extract();
+        node_map.insert(
+            this_node.to_string(),
+            Node {
+                next_l: next_node_l.to_string(),
+                next_r: next_node_r.to_string(),
+            },
+        );
+    }
+
+    let mut cur_nodes: Vec<_> = node_map
+        .keys()
+        .filter(|k| k.ends_with("A"))
+        .map(|k| k.clone())
+        .collect();
+    let mut steps = 0;
+    while !cur_nodes.iter().all(|n| n.ends_with("Z")) {
+        let next_lr = lr_iter.next().unwrap();
+        cur_nodes = cur_nodes
+            .iter()
+            .map(|cur_node| {
+                let instr = node_map.get(cur_node.as_str()).unwrap();
+                return match next_lr {
+                    'L' => &instr.next_l,
+                    'R' => &instr.next_r,
+                    _ => panic!(),
+                }
+                .to_string();
+            })
+            .collect();
+
+        for (i, node) in cur_nodes.iter().enumerate() {
+            if node.ends_with("Z") {
+                println!("[{}] {}: OK in step {}", i, node, steps);
+                // Now use calculator... :)
+            }
+        }
+
+        steps += 1;
+    }
+    p //rintln!("{}", steps);
+}
+
 fn main() {
-    day6_2();
+    day8_2();
 }
