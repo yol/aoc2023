@@ -1,3 +1,5 @@
+#![feature(get_many_mut)]
+
 use regex::Regex;
 use std::cmp::{max, min, Ordering};
 use std::collections::{BTreeMap, HashSet};
@@ -1122,25 +1124,19 @@ fn day9_2() {
         let mut histories = vec![nums];
         while !histories.last().unwrap().iter().all(|&c| c == 0) {
             let this = histories.last().unwrap();
-            // FIXME better way to iterate over the pairs?
-            let iter_a = this.iter().take(this.len() - 1);
-            let iter_b = this.iter().skip(1);
-            let pairs = iter_a.zip(iter_b);
-            let diffs = pairs.map(|(a, b)| b - a).collect();
+            let pairs = this.windows(2);
+            let diffs = pairs.map(|s| s[1] - s[0]).collect();
             histories.push(diffs);
         }
-        // FIXME for loop with negative step?
-        for i in 0..histories.len() - 1 {
-            let len = histories.len();
-            // FIXME ugly :( but it doesn't seem to be possible to borrow more than one array item
-            let mut iter_mut = histories.iter_mut();
-            let before = iter_mut.nth(len - i - 2).unwrap();
-            let this = iter_mut.next().unwrap();
-            let new_el = -this.first().unwrap() + before.first().unwrap();
+        for i in num::range_step((histories.len() - 1) as i32, 0, -1) {
+            let [before, this] = histories
+                .get_many_mut([i as usize - 1, i as usize])
+                .unwrap();
+            let new_el = -this[0] + before[0];
             before.insert(0, new_el);
         }
         println!("{:?}", histories);
-        return *histories[0].first().unwrap();
+        return histories[0][0];
     });
     let sum: i32 = next_vals.sum();
     println!("{}", sum);
