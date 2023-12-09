@@ -844,73 +844,56 @@ fn day7_2() {
         HighCard = 1,
     }
     type Hand = Vec<i32>;
+    const JOKER: i32 = 1;
 
     fn determine_hand_type(hand: &Hand) -> HandType {
         let mut hand_bins = BTreeMap::new();
-        let def = 0;
-        let mut jokers = 0;
-        for card in hand {
-            if *card == 1 {
-                jokers += 1;
-            } else {
-                // FIXME ugly
-                let old_val = hand_bins.get(&card).unwrap_or(&def);
-                hand_bins.insert(card, old_val + 1);
-            }
+        for &card in hand {
+            hand_bins
+                .entry(card)
+                .and_modify(|c| {
+                    *c += 1;
+                })
+                .or_insert(1);
         }
-        let mut best_card = 0;
-        let mut best_card_count = 0;
-        // FIXME this is ugly
-        for (c, v) in &hand_bins {
-            if *v > best_card_count {
-                best_card_count = *v;
-                best_card = **c;
-            }
-        }
-        hand_bins.insert(&best_card, best_card_count + jokers);
-        if hand_bins.values().any(|count| *count == 5) {
-            return HandType::FiveOfAKind;
-        }
-        if hand_bins.values().any(|count| *count == 4) {
-            return HandType::FourOfAKind;
-        }
-        let pairs = hand_bins.values().filter(|count| **count == 2);
-        let pair_count = pairs.count();
-        if hand_bins.values().any(|count| *count == 3) {
-            if pair_count == 1 {
-                return HandType::FullHouse;
-            }
-            return HandType::ThreeOfAKind;
-        }
-        if pair_count == 2 {
-            return HandType::TwoPair;
-        }
-        if pair_count == 1 {
-            return HandType::OnePair;
-        }
-        return HandType::HighCard;
+        let jokers = hand_bins.remove(&JOKER).unwrap_or(0);
+        let (&best_card, &best_card_count) = hand_bins
+            .iter()
+            .max_by_key(|(_, &v)| v)
+            .unwrap_or((&JOKER, &0)) // only jokers
+            ;
+        hand_bins.insert(best_card, best_card_count + jokers);
+        let mut sorted_counts: Vec<_> = hand_bins.values().collect();
+        sorted_counts.sort_unstable_by(|a, b| b.cmp(a));
+        return match sorted_counts[0] {
+            5 => HandType::FiveOfAKind,
+            4 => HandType::FourOfAKind,
+            3 => match sorted_counts[1] {
+                2 => HandType::FullHouse,
+                1 => HandType::ThreeOfAKind,
+                _ => panic!(),
+            },
+            2 => match sorted_counts[1] {
+                2 => HandType::TwoPair,
+                1 => HandType::OnePair,
+                _ => panic!(),
+            },
+            1 => HandType::HighCard,
+            _ => panic!(),
+        };
     }
 
     fn parse_hand(hand: &str) -> Hand {
         return hand
             .chars()
-            .map(|c| {
-                return match c {
-                    '2' => 2,
-                    '3' => 3,
-                    '4' => 4,
-                    '5' => 5,
-                    '6' => 6,
-                    '7' => 7,
-                    '8' => 8,
-                    '9' => 9,
-                    'T' => 10,
-                    'J' => 1,
-                    'Q' => 12,
-                    'K' => 13,
-                    'A' => 14,
-                    _ => panic!(),
-                };
+            .map(|c| match c {
+                '2'..='9' => c.to_digit(10).unwrap() as i32,
+                'T' => 10,
+                'J' => JOKER,
+                'Q' => 12,
+                'K' => 13,
+                'A' => 14,
+                _ => panic!(),
             })
             .collect();
     }
@@ -1143,5 +1126,5 @@ fn day9_2() {
 }
 
 fn main() {
-    day9_2();
+    day7_2();
 }
