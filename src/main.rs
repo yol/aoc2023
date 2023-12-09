@@ -1009,7 +1009,7 @@ fn day8_1() {
 }
 
 fn day8_2() {
-    let file = File::open(Path::new("inp8_3.txt")).unwrap();
+    let file = File::open(Path::new("inp8_2.txt")).unwrap();
     let mut lines = io::BufReader::new(file).lines();
 
     let lr: Vec<_> = lines.next().unwrap().unwrap().chars().collect();
@@ -1070,9 +1070,82 @@ fn day8_2() {
 
         steps += 1;
     }
-    p //rintln!("{}", steps);
+    // println!("{}", steps);
+}
+
+fn day9_1() {
+    let file = File::open(Path::new("inp9_2.txt")).unwrap();
+    let lines = io::BufReader::new(file).lines();
+
+    let next_vals = lines.map(|l| {
+        let line = l.unwrap();
+        let nums: Vec<i32> = line
+            .split_whitespace()
+            .map(|s| s.parse().unwrap())
+            .collect();
+        let mut histories = vec![nums];
+        while !histories.last().unwrap().iter().all(|&c| c == 0) {
+            let this = histories.last().unwrap();
+            let iter_a = this.iter().take(this.len() - 1);
+            let iter_b = this.iter().skip(1);
+            let pairs = iter_a.zip(iter_b);
+            let diffs = pairs.map(|(a, b)| b - a).collect();
+            histories.push(diffs);
+        }
+        // FIXME for loop with negative step?
+        for i in 0..histories.len() - 1 {
+            let len = histories.len();
+            // FIXME ugly :( but it doesn't seem to be possible to borrow more than one array item
+            let mut iter_mut = histories.iter_mut();
+            let before = iter_mut.nth(len - i - 2).unwrap();
+            let this = iter_mut.next().unwrap();
+            let new_el = this.last().unwrap() + before.last().unwrap();
+            before.push(new_el);
+        }
+        println!("{:?}", histories);
+        return *histories[0].last().unwrap();
+    });
+    let sum: i32 = next_vals.sum();
+    println!("{}", sum);
+}
+
+fn day9_2() {
+    let file = File::open(Path::new("inp9_2.txt")).unwrap();
+    let lines = io::BufReader::new(file).lines();
+
+    let next_vals = lines.map(|l| {
+        let line = l.unwrap();
+        let nums: Vec<i32> = line
+            .split_whitespace()
+            .map(|s| s.parse().unwrap())
+            .collect();
+        let mut histories = vec![nums];
+        while !histories.last().unwrap().iter().all(|&c| c == 0) {
+            let this = histories.last().unwrap();
+            // FIXME better way to iterate over the pairs?
+            let iter_a = this.iter().take(this.len() - 1);
+            let iter_b = this.iter().skip(1);
+            let pairs = iter_a.zip(iter_b);
+            let diffs = pairs.map(|(a, b)| b - a).collect();
+            histories.push(diffs);
+        }
+        // FIXME for loop with negative step?
+        for i in 0..histories.len() - 1 {
+            let len = histories.len();
+            // FIXME ugly :( but it doesn't seem to be possible to borrow more than one array item
+            let mut iter_mut = histories.iter_mut();
+            let before = iter_mut.nth(len - i - 2).unwrap();
+            let this = iter_mut.next().unwrap();
+            let new_el = -this.first().unwrap() + before.first().unwrap();
+            before.insert(0, new_el);
+        }
+        println!("{:?}", histories);
+        return *histories[0].first().unwrap();
+    });
+    let sum: i32 = next_vals.sum();
+    println!("{}", sum);
 }
 
 fn main() {
-    day8_2();
+    day9_2();
 }
