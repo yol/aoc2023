@@ -1127,7 +1127,7 @@ fn day9_2() {
 }
 
 fn day10_1() {
-    let file = File::open(Path::new("inp10_1.txt")).unwrap();
+    let file = File::open(Path::new("inp10_2.txt")).unwrap();
 
     #[derive(Debug, PartialEq, Eq, Clone, Copy)]
     enum Tile {
@@ -1148,7 +1148,17 @@ fn day10_1() {
         Out,
     }
 
-    #[derive(Debug, Clone, Copy)]
+    impl LoopCover {
+        fn opposite(&self) -> LoopCover {
+            match self {
+                LoopCover::In => LoopCover::Out,
+                LoopCover::Out => LoopCover::In,
+                LoopCover::Unknown => LoopCover::Unknown,
+            }
+        }
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
     enum Direction {
         N = 0,
         E = 1,
@@ -1163,6 +1173,14 @@ fn day10_1() {
                 Direction::E => Direction::W,
                 Direction::S => Direction::N,
                 Direction::W => Direction::E,
+            }
+        }
+        fn repr(&self) -> char {
+            match self {
+                Direction::N => '╵',
+                Direction::E => '╶',
+                Direction::S => '╷',
+                Direction::W => '╴',
             }
         }
     }
@@ -1188,6 +1206,19 @@ fn day10_1() {
             let con_b = next_tile.connections();
             return con_a[direction as usize] && con_b[direction.opposite() as usize];
         }
+
+        fn repr(&self) -> char {
+            match self {
+                Tile::WE => '─',
+                Tile::NS => '│',
+                Tile::NW => '┘',
+                Tile::NE => '└',
+                Tile::SE => '┌',
+                Tile::SW => '┐',
+                Tile::Start => 'S',
+                Tile::Ground => ' ',
+            }
+        }
     }
 
     #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -1195,6 +1226,8 @@ fn day10_1() {
         tile: Tile,
         dist_from_start: usize,
         loop_cover: LoopCover,
+        incoming_direction: Option<Direction>,
+        outgoing_direction: Option<Direction>,
     }
 
     let mut grid: Vec<Vec<GridEntry>> = io::BufReader::new(file)
@@ -1217,6 +1250,8 @@ fn day10_1() {
                     },
                     dist_from_start: 0,
                     loop_cover: LoopCover::Unknown,
+                    incoming_direction: None,
+                    outgoing_direction: None,
                 })
                 .collect();
             return row;
@@ -1243,8 +1278,6 @@ fn day10_1() {
     let grid_w = grid[0].len();
     let grid_h = grid.len();
 
-    let mut q: Queue<Position> = queue![start_pos];
-
     let advance_pos = |pos: Position, dir: Direction| match dir {
         Direction::N if pos.y >= 1 => Some(Position {
             x: pos.x,
@@ -1265,8 +1298,10 @@ fn day10_1() {
         _ => None,
     };
 
-    while q.size() > 0 {
-        let pos = q.remove().unwrap();
+    let mut next_pos: Option<Position> = Some(start_pos);
+
+    while next_pos.is_some() {
+        let pos = next_pos.take().unwrap();
         let grid_entry = grid[pos.y][pos.x];
         let tile = grid_entry.tile;
 
@@ -1283,107 +1318,23 @@ fn day10_1() {
                 .join("\n")
         );*/
 
-        let mut paint_from_pos = |grid: &mut Vec<Vec<GridEntry>>, from_pos: Position| {
-            let mut q = queue![from_pos];
-            while q.size() > 0 {
-                let pos = q.remove().unwrap();
-                let grid_entry = &mut grid[pos.y][pos.x];
-                if grid_entry.tile != Tile::Ground || grid_entry.loop_cover != LoopCover::Unknown {
-                    continue;
-                }
-                grid_entry.loop_cover = LoopCover::In;
-                let mut check_dir = |dir: Direction| {
-                    let new_pos = match advance_pos(pos, dir) {
-                        None => return,
-                        Some(p) => p,
-                    };
-                    let _ = q.add(new_pos);
-                };
-                check_dir(Direction::N);
-                check_dir(Direction::E);
-                check_dir(Direction::S);
-                check_dir(Direction::W);
-            }
-        };
-
         let mut check_dir = |dir: Direction| -> bool {
+            if grid_entry.incoming_direction == Some(dir) {
+                return false;
+            }
             let new_pos = match advance_pos(pos, dir) {
                 None => return false,
                 Some(p) => p,
             };
             let new_grid_entry = &mut grid[new_pos.y][new_pos.x];
-            if new_grid_entry.tile != Tile::Start && tile.connects_to(new_grid_entry.tile, dir) {
+            if tile.connects_to(new_grid_entry.tile, dir) {
                 if new_grid_entry.dist_from_start == 0 {
                     new_grid_entry.dist_from_start = grid_entry.dist_from_start + 1;
-                    let _ = q.add(new_pos);
-
-                    match (dir, tile) {
-                        (Direction::N, Tile::NS) if pos.x < grid_w - 1 => paint_from_pos(
-                            &mut grid,
-                            Position {
-                                x: pos.x + 1,
-                                y: pos.y,
-                            },
-                        ),
-                        (Direction::N, Tile::NE) => paint_from_pos(
-                            &mut grid,
-                            Position {
-                                x: pos.x + 1,
-                                y: pos.y - 1,
-                            },
-                        ),
-                        (Direction::N, Tile::NW) => paint_from_pos(
-                            &mut grid,
-                            Position {
-                                x: pos.x - 1,
-                                y: pos.y - 1,
-                            },
-                        ),
-
-                        (Direction::S, Tile::NS) if pos.x >= 1 => paint_from_pos(
-                            &mut grid,
-                            Position {
-                                x: pos.x - 1,
-                                y: pos.y,
-                            },
-                        ),
-                        (Direction::S, Tile::SE) => {
-                            paint_from_pos(&mut grid, Position { x: pos.x, y: pos.y })
-                        }
-                        (Direction::N, Tile::SW) => {
-                            paint_from_pos(&mut grid, Position { x: pos.x, y: pos.y })
-                        }
-
-                        (Direction::W, Tile::WE) if pos.y >= 1 => paint_from_pos(
-                            &mut grid,
-                            Position {
-                                x: pos.x,
-                                y: pos.y - 1,
-                            },
-                        ),
-                        (Direction::W, Tile::NW) => {
-                            paint_from_pos(&mut grid, Position { x: pos.x, y: pos.y })
-                        }
-                        (Direction::W, Tile::SW) => {
-                            paint_from_pos(&mut grid, Position { x: pos.x, y: pos.y })
-                        }
-
-                        (Direction::E, Tile::WE) if pos.y < grid_h - 1 => paint_from_pos(
-                            &mut grid,
-                            Position {
-                                x: pos.x,
-                                y: pos.y + 1,
-                            },
-                        ),
-                        (Direction::E, Tile::NE) => {
-                            paint_from_pos(&mut grid, Position { x: pos.x, y: pos.y })
-                        }
-                        (Direction::E, Tile::SE) => {
-                            paint_from_pos(&mut grid, Position { x: pos.x, y: pos.y })
-                        }
-
-                        _ => {}
+                    new_grid_entry.incoming_direction = Some(dir.opposite());
+                    if new_grid_entry.tile != Tile::Start {
+                        next_pos = Some(new_pos);
                     }
+                    grid[pos.y][pos.x].outgoing_direction = Some(dir);
                     return true;
                 }
             }
@@ -1391,6 +1342,7 @@ fn day10_1() {
         };
         // Find connected adjacent tile
         if check_dir(Direction::N) {
+            // FIXME cannot use &grid_entry due to borrow checker
             continue;
         }
         if check_dir(Direction::E) {
@@ -1404,12 +1356,122 @@ fn day10_1() {
         }
     }
 
+    let start_entry = &mut grid[start_pos.y][start_pos.x];
+    let (start_in, start_out) = (
+        start_entry.incoming_direction.unwrap(),
+        start_entry.outgoing_direction.unwrap(),
+    );
+    start_entry.tile = match start_in {
+        Direction::N => match start_out {
+            Direction::E => Tile::NE,
+            Direction::S => Tile::NS,
+            Direction::W => Tile::NW,
+            _ => panic!(),
+        },
+        Direction::E => match start_out {
+            Direction::N => Tile::NE,
+            Direction::S => Tile::SE,
+            Direction::W => Tile::WE,
+            _ => panic!(),
+        },
+        Direction::S => match start_out {
+            Direction::N => Tile::NS,
+            Direction::E => Tile::SE,
+            Direction::W => Tile::SW,
+            _ => panic!(),
+        },
+        Direction::W => match start_out {
+            Direction::N => Tile::NW,
+            Direction::E => Tile::WE,
+            Direction::S => Tile::SW,
+            _ => panic!(),
+        },
+    };
+
+    println!(
+        "{}",
+        grid.iter()
+            .map(|row| String::from_iter(row.iter().map(|e| e.tile.repr())))
+            .collect::<Vec<String>>()
+            .join("\n")
+    );
+    println!(
+        "{}",
+        grid.iter()
+            .map(
+                |row| String::from_iter(row.iter().map(|e| match e.incoming_direction {
+                    None => '.',
+                    Some(d) => d.repr(),
+                }))
+            )
+            .collect::<Vec<String>>()
+            .join("\n")
+    );
+    println!(
+        "{}",
+        grid.iter()
+            .map(
+                |row| String::from_iter(row.iter().map(|e| match e.outgoing_direction {
+                    None => '.',
+                    Some(d) => d.repr(),
+                }))
+            )
+            .collect::<Vec<String>>()
+            .join("\n")
+    );
+
+    fn get_vertical_direction(dir_a: Direction, dir_b: Direction) -> Direction {
+        match dir_a {
+            Direction::N | Direction::S => dir_a,
+            Direction::W | Direction::E => dir_b,
+        }
+    }
+
+    for (y, row) in grid.iter_mut().enumerate() {
+        let mut cover = LoopCover::Out;
+        let mut bend_from_direction: Option<Direction> = None;
+        for (x, col) in row.iter_mut().enumerate() {
+            // Is part of loop?
+            if col.dist_from_start > 0 {
+                match col.tile {
+                    // Crossing straight pipe
+                    Tile::NS => cover = cover.opposite(),
+                    // Crossing begin of bend
+                    Tile::NE | Tile::SE => {
+                        bend_from_direction = Some(get_vertical_direction(
+                            col.outgoing_direction.unwrap(),
+                            col.incoming_direction.unwrap(),
+                        ))
+                    }
+                    // Crossing end of bend
+                    Tile::NW | Tile::SW => {
+                        // Check if bend opens up space behind it
+                        let vertical_direction = get_vertical_direction(
+                            col.outgoing_direction.unwrap(),
+                            col.incoming_direction.unwrap(),
+                        );
+                        if (vertical_direction != bend_from_direction.unwrap()) {
+                            cover = cover.opposite();
+                            bend_from_direction = None;
+                        }
+                    }
+                    Tile::WE => { // Ignored since we are traversing rows
+                    }
+                    _ => panic!(),
+                }
+            } else {
+                col.loop_cover = cover;
+            }
+        }
+    }
+
     println!(
         "{}",
         grid.iter()
             .map(
                 |row| String::from_iter(row.iter().map(|e| match e.loop_cover {
                     LoopCover::In => 'I',
+                    LoopCover::Out => 'O',
                     _ => '.',
                 }))
             )
