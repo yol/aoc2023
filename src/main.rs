@@ -1,5 +1,6 @@
 #![feature(get_many_mut)]
 
+use queues::{queue, IsQueue, Queue};
 use regex::Regex;
 use std::cmp::{max, min, Ordering};
 use std::collections::{BTreeMap, HashSet};
@@ -1125,6 +1126,319 @@ fn day9_2() {
     println!("{}", sum);
 }
 
+fn day10_1() {
+    let file = File::open(Path::new("inp10_1.txt")).unwrap();
+
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    enum Tile {
+        Ground,
+        NS,
+        WE,
+        NE,
+        NW,
+        SW,
+        SE,
+        Start,
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    enum LoopCover {
+        Unknown,
+        In,
+        Out,
+    }
+
+    #[derive(Debug, Clone, Copy)]
+    enum Direction {
+        N = 0,
+        E = 1,
+        S = 2,
+        W = 3,
+    }
+
+    impl Direction {
+        fn opposite(&self) -> Direction {
+            match self {
+                Direction::N => Direction::S,
+                Direction::E => Direction::W,
+                Direction::S => Direction::N,
+                Direction::W => Direction::E,
+            }
+        }
+    }
+
+    impl Tile {
+        fn connections(&self) -> [bool; 4] {
+            const F: bool = false;
+            const T: bool = true;
+            match self {
+                Tile::Ground => [F, F, F, F],
+                Tile::NS => [T, F, T, F],
+                Tile::WE => [F, T, F, T],
+                Tile::NE => [T, T, F, F],
+                Tile::NW => [T, F, F, T],
+                Tile::SW => [F, F, T, T],
+                Tile::SE => [F, T, T, F],
+                Tile::Start => [T, T, T, T],
+            }
+        }
+
+        fn connects_to(&self, next_tile: Tile, direction: Direction) -> bool {
+            let con_a = self.connections();
+            let con_b = next_tile.connections();
+            return con_a[direction as usize] && con_b[direction.opposite() as usize];
+        }
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    struct GridEntry {
+        tile: Tile,
+        dist_from_start: usize,
+        loop_cover: LoopCover,
+    }
+
+    let mut grid: Vec<Vec<GridEntry>> = io::BufReader::new(file)
+        .lines()
+        .map(|l| {
+            let line = l.unwrap();
+            let row: Vec<_> = line
+                .chars()
+                .map(|c| GridEntry {
+                    tile: match c {
+                        '.' => Tile::Ground,
+                        '-' => Tile::WE,
+                        '|' => Tile::NS,
+                        'L' => Tile::NE,
+                        'J' => Tile::NW,
+                        '7' => Tile::SW,
+                        'F' => Tile::SE,
+                        'S' => Tile::Start,
+                        _ => panic!(),
+                    },
+                    dist_from_start: 0,
+                    loop_cover: LoopCover::Unknown,
+                })
+                .collect();
+            return row;
+        })
+        .collect();
+
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    struct Position {
+        x: usize,
+        y: usize,
+    }
+
+    let mut loop_start_pos: Option<Position> = None;
+    // FIXME nicer way to do this with iters?
+    for (y, row) in grid.iter().enumerate() {
+        for (x, col) in row.iter().enumerate() {
+            if col.tile == Tile::Start {
+                loop_start_pos = Some(Position { x, y });
+                break;
+            }
+        }
+    }
+    let start_pos = loop_start_pos.unwrap();
+    let grid_w = grid[0].len();
+    let grid_h = grid.len();
+
+    let mut q: Queue<Position> = queue![start_pos];
+
+    let advance_pos = |pos: Position, dir: Direction| match dir {
+        Direction::N if pos.y >= 1 => Some(Position {
+            x: pos.x,
+            y: pos.y - 1,
+        }),
+        Direction::E if pos.x < grid_w - 1 => Some(Position {
+            x: pos.x + 1,
+            y: pos.y,
+        }),
+        Direction::S if pos.y < grid_h - 1 => Some(Position {
+            x: pos.x,
+            y: pos.y + 1,
+        }),
+        Direction::W if pos.x >= 1 => Some(Position {
+            x: pos.x - 1,
+            y: pos.y,
+        }),
+        _ => None,
+    };
+
+    while q.size() > 0 {
+        let pos = q.remove().unwrap();
+        let grid_entry = grid[pos.y][pos.x];
+        let tile = grid_entry.tile;
+
+        /*println!(
+            "{}\n",
+            grid.iter()
+                .map(
+                    |row| String::from_iter(row.iter().map(|e| match e.dist_from_start {
+                        0 => '.',
+                        _ => 'X',
+                    }))
+                )
+                .collect::<Vec<String>>()
+                .join("\n")
+        );*/
+
+        let mut paint_from_pos = |grid: &mut Vec<Vec<GridEntry>>, from_pos: Position| {
+            let mut q = queue![from_pos];
+            while q.size() > 0 {
+                let pos = q.remove().unwrap();
+                let grid_entry = &mut grid[pos.y][pos.x];
+                if grid_entry.tile != Tile::Ground || grid_entry.loop_cover != LoopCover::Unknown {
+                    continue;
+                }
+                grid_entry.loop_cover = LoopCover::In;
+                let mut check_dir = |dir: Direction| {
+                    let new_pos = match advance_pos(pos, dir) {
+                        None => return,
+                        Some(p) => p,
+                    };
+                    let _ = q.add(new_pos);
+                };
+                check_dir(Direction::N);
+                check_dir(Direction::E);
+                check_dir(Direction::S);
+                check_dir(Direction::W);
+            }
+        };
+
+        let mut check_dir = |dir: Direction| -> bool {
+            let new_pos = match advance_pos(pos, dir) {
+                None => return false,
+                Some(p) => p,
+            };
+            let new_grid_entry = &mut grid[new_pos.y][new_pos.x];
+            if new_grid_entry.tile != Tile::Start && tile.connects_to(new_grid_entry.tile, dir) {
+                if new_grid_entry.dist_from_start == 0 {
+                    new_grid_entry.dist_from_start = grid_entry.dist_from_start + 1;
+                    let _ = q.add(new_pos);
+
+                    match (dir, tile) {
+                        (Direction::N, Tile::NS) if pos.x < grid_w - 1 => paint_from_pos(
+                            &mut grid,
+                            Position {
+                                x: pos.x + 1,
+                                y: pos.y,
+                            },
+                        ),
+                        (Direction::N, Tile::NE) => paint_from_pos(
+                            &mut grid,
+                            Position {
+                                x: pos.x + 1,
+                                y: pos.y - 1,
+                            },
+                        ),
+                        (Direction::N, Tile::NW) => paint_from_pos(
+                            &mut grid,
+                            Position {
+                                x: pos.x - 1,
+                                y: pos.y - 1,
+                            },
+                        ),
+
+                        (Direction::S, Tile::NS) if pos.x >= 1 => paint_from_pos(
+                            &mut grid,
+                            Position {
+                                x: pos.x - 1,
+                                y: pos.y,
+                            },
+                        ),
+                        (Direction::S, Tile::SE) => {
+                            paint_from_pos(&mut grid, Position { x: pos.x, y: pos.y })
+                        }
+                        (Direction::N, Tile::SW) => {
+                            paint_from_pos(&mut grid, Position { x: pos.x, y: pos.y })
+                        }
+
+                        (Direction::W, Tile::WE) if pos.y >= 1 => paint_from_pos(
+                            &mut grid,
+                            Position {
+                                x: pos.x,
+                                y: pos.y - 1,
+                            },
+                        ),
+                        (Direction::W, Tile::NW) => {
+                            paint_from_pos(&mut grid, Position { x: pos.x, y: pos.y })
+                        }
+                        (Direction::W, Tile::SW) => {
+                            paint_from_pos(&mut grid, Position { x: pos.x, y: pos.y })
+                        }
+
+                        (Direction::E, Tile::WE) if pos.y < grid_h - 1 => paint_from_pos(
+                            &mut grid,
+                            Position {
+                                x: pos.x,
+                                y: pos.y + 1,
+                            },
+                        ),
+                        (Direction::E, Tile::NE) => {
+                            paint_from_pos(&mut grid, Position { x: pos.x, y: pos.y })
+                        }
+                        (Direction::E, Tile::SE) => {
+                            paint_from_pos(&mut grid, Position { x: pos.x, y: pos.y })
+                        }
+
+                        _ => {}
+                    }
+                    return true;
+                }
+            }
+            return false;
+        };
+        // Find connected adjacent tile
+        if check_dir(Direction::N) {
+            continue;
+        }
+        if check_dir(Direction::E) {
+            continue;
+        }
+        if check_dir(Direction::S) {
+            continue;
+        }
+        if check_dir(Direction::W) {
+            continue;
+        }
+    }
+
+    println!(
+        "{}",
+        grid.iter()
+            .map(
+                |row| String::from_iter(row.iter().map(|e| match e.loop_cover {
+                    LoopCover::In => 'I',
+                    _ => '.',
+                }))
+            )
+            .collect::<Vec<String>>()
+            .join("\n")
+    );
+
+    let max_dist = grid
+        .iter()
+        .map(|row| row.iter().map(|e| e.dist_from_start).max().unwrap())
+        .max()
+        .unwrap();
+    println!("{}", max_dist);
+
+    let loop_area: usize = grid
+        .iter()
+        .map(|row| row.iter().filter(|e| e.loop_cover == LoopCover::In).count())
+        .sum();
+    let out_area: usize = grid
+        .iter()
+        .map(|row| {
+            row.iter()
+                .filter(|e| e.loop_cover == LoopCover::Unknown && e.tile == Tile::Ground)
+                .count()
+        })
+        .sum();
+    println!("{}, {}, {}", loop_area, out_area, loop_area - out_area);
+}
+
 fn main() {
-    day7_2();
+    day10_1();
 }
