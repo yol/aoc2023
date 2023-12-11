@@ -1,8 +1,7 @@
 #![feature(get_many_mut)]
 
-use queues::{queue, IsQueue, Queue};
 use regex::Regex;
-use std::cmp::{max, min, Ordering};
+use std::cmp::{max, min};
 use std::collections::{BTreeMap, HashSet};
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -118,7 +117,7 @@ fn day2() {
 fn day3_1() {
     let file = File::open(Path::new("inp3_2.txt")).unwrap();
 
-    let mut grid: Vec<Vec<u8>> = io::BufReader::new(file)
+    let grid: Vec<Vec<u8>> = io::BufReader::new(file)
         .lines()
         .map(|l| {
             let line = l.unwrap();
@@ -177,7 +176,7 @@ fn day3_1() {
 fn day3_2() {
     let file = File::open(Path::new("inp3_2.txt")).unwrap();
 
-    let mut grid: Vec<Vec<u8>> = io::BufReader::new(file)
+    let grid: Vec<Vec<u8>> = io::BufReader::new(file)
         .lines()
         .map(|l| {
             let line = l.unwrap();
@@ -291,7 +290,7 @@ fn day4_1() {
         .map(|l| {
             let line = l.unwrap();
             let mut parts = line.splitn(3, |c| c == ':' || c == '|');
-            let card_no_txt = parts.next().unwrap();
+            let _ = parts.next().unwrap();
 
             fn parse_nos(no_str: &str) -> HashSet<i64> {
                 return no_str
@@ -408,7 +407,7 @@ fn day5_1() {
             continue;
         }
 
-        let mut current_map = maps.last_mut().unwrap();
+        let current_map = maps.last_mut().unwrap();
         let mut line_parts = line.split_whitespace();
         let dest_start = line_parts.next().unwrap().parse().unwrap();
         let src_start = line_parts.next().unwrap().parse().unwrap();
@@ -519,7 +518,7 @@ fn day5_2() {
             continue;
         }
 
-        let mut current_map = maps.last_mut().unwrap();
+        let current_map = maps.last_mut().unwrap();
         let mut line_parts = line.split_whitespace();
         let dest_start = line_parts.next().unwrap().parse().unwrap();
         let src_start = line_parts.next().unwrap().parse().unwrap();
@@ -709,7 +708,7 @@ fn day6_2() {
 
 fn day7_1() {
     let file = File::open(Path::new("inp7_2.txt")).unwrap();
-    let mut lines = io::BufReader::new(file).lines();
+    let lines = io::BufReader::new(file).lines();
 
     #[derive(Eq, PartialEq, PartialOrd, Ord, Debug)]
     enum HandType {
@@ -1412,10 +1411,10 @@ fn day10() {
         }
     }
 
-    for (y, row) in grid.iter_mut().enumerate() {
+    for row in grid.iter_mut() {
         let mut cover = LoopCover::Out;
         let mut bend_from_direction: Option<Direction> = None;
-        for (x, col) in row.iter_mut().enumerate() {
+        for col in row.iter_mut() {
             // Is part of loop?
             if col.dist_from_start > 0 {
                 match col.tile {
@@ -1435,7 +1434,7 @@ fn day10() {
                             col.outgoing_direction.unwrap(),
                             col.incoming_direction.unwrap(),
                         );
-                        if (vertical_direction != bend_from_direction.unwrap()) {
+                        if vertical_direction != bend_from_direction.unwrap() {
                             cover = cover.opposite();
                             bend_from_direction = None;
                         }
@@ -1467,8 +1466,8 @@ fn day10() {
     println!("{}", loop_area);
 }
 
-mod day11;
+mod day12;
 
 fn main() {
-    day11::part2();
+    day12::part1();
 }

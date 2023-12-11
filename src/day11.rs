@@ -5,11 +5,8 @@ use std::{
 };
 
 use grid::Grid;
-use indicatif::{ParallelProgressIterator, ProgressStyle};
 use itertools::Itertools;
 use line_drawing::WalkGrid;
-use num::integer::Roots;
-use rayon::prelude::*;
 
 pub fn part1() {
     let file = File::open(Path::new("inp11_2.txt")).unwrap();
