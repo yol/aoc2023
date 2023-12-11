@@ -5,8 +5,10 @@ use std::{
 };
 
 use grid::Grid;
+use indicatif::{ParallelProgressIterator, ProgressStyle};
 use itertools::Itertools;
 use line_drawing::WalkGrid;
+use rayon::prelude::*;
 
 pub fn part1() {
     let file = File::open(Path::new("inp11_2.txt")).unwrap();
@@ -31,21 +33,60 @@ pub fn part1() {
             .join("\n")
     );
 
-    fn insert_space(grid: &mut Grid<bool>) {
-        let mut y = 0;
-        while y < grid.rows() {
-            let mut row = grid.iter_row(y);
-            if row.all(|&c| c == false) {
-                grid.insert_row(y, vec![false; grid.cols()]);
-                y += 1;
+    let mut galaxies = Vec::new();
+    for (y, row) in grid.iter_rows().enumerate() {
+        for (x, &col) in row.enumerate() {
+            if col == true {
+                galaxies.push((x as i64, y as i64));
             }
-            y += 1;
         }
-    };
-    insert_space(&mut grid);
-    grid.transpose();
-    insert_space(&mut grid);
-    grid.transpose();
+    }
+    println!("{:?}", galaxies);
+
+    let empty_rows: Vec<usize> = (0..grid.rows())
+        .filter(|&y| grid.iter_row(y).all(|&c| c == false))
+        .collect();
+    let empty_cols: Vec<usize> = (0..grid.cols())
+        .filter(|&x| grid.iter_col(x).all(|&c| c == false))
+        .collect();
+    for galaxy in &mut galaxies {
+        galaxy.0 += empty_cols
+            .iter()
+            .filter(|&&x| (x as i64) < galaxy.0)
+            .count() as i64;
+        galaxy.1 += empty_rows
+            .iter()
+            .filter(|&&y| (y as i64) < galaxy.1)
+            .count() as i64;
+    }
+    println!("{:?}", galaxies);
+
+    //let galaxies = vec![(1, 6), (5, 11)];
+
+    let sum: usize = galaxies
+        .iter()
+        .permutations(2)
+        .map(|galaxies| {
+            let &a = galaxies[0];
+            let &b = galaxies[1];
+            WalkGrid::new(a, b).count() - 1
+        })
+        .sum();
+
+    println!("{}", sum / 2);
+}
+
+pub fn part2() {
+    let file = File::open(Path::new("inp11_2.txt")).unwrap();
+    let mut lines = io::BufReader::new(file).lines().peekable();
+    // FIXME is this OK?
+    let first_line = lines.peek().unwrap().as_ref().unwrap().clone();
+
+    let grid_vec: Vec<_> = lines
+        .flat_map(|l| l.unwrap().chars().map(|c| c == '#').collect::<Vec<_>>())
+        .collect();
+
+    let grid = Grid::from_vec(grid_vec, first_line.len());
 
     println!(
         "{}",
@@ -62,17 +103,42 @@ pub fn part1() {
     for (y, row) in grid.iter_rows().enumerate() {
         for (x, &col) in row.enumerate() {
             if col == true {
-                galaxies.push((x as isize, y as isize));
+                galaxies.push((x as i64, y as i64));
             }
         }
     }
-    //let galaxies = vec![(1, 6), (5, 11)];
-
     println!("{:?}", galaxies);
 
-    let sum: usize = galaxies
-        .iter()
-        .permutations(2)
+    let empty_rows: Vec<usize> = (0..grid.rows())
+        .filter(|&y| grid.iter_row(y).all(|&c| c == false))
+        .collect();
+    let empty_cols: Vec<usize> = (0..grid.cols())
+        .filter(|&x| grid.iter_col(x).all(|&c| c == false))
+        .collect();
+    for galaxy in &mut galaxies {
+        const EXPANSION: i64 = 999_999;
+        galaxy.0 += EXPANSION
+            * empty_cols
+                .iter()
+                .filter(|&&x| (x as i64) < galaxy.0)
+                .count() as i64;
+        galaxy.1 += EXPANSION
+            * empty_rows
+                .iter()
+                .filter(|&&y| (y as i64) < galaxy.1)
+                .count() as i64;
+    }
+    println!("{:?}", galaxies);
+
+    let combos = galaxies.iter().combinations(2).collect_vec();
+    let style = ProgressStyle::with_template(
+        "[{elapsed_precise} -> {eta_precise}] {wide_bar} {pos:>7}/{len:7}",
+    )
+    .unwrap();
+
+    let sum: usize = combos
+        .par_iter()
+        .progress_with_style(style)
         .map(|galaxies| {
             let &a = galaxies[0];
             let &b = galaxies[1];
@@ -80,5 +146,5 @@ pub fn part1() {
         })
         .sum();
 
-    println!("{}", sum / 2);
+    println!("{}", sum);
 }
