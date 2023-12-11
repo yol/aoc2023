@@ -8,6 +8,7 @@ use grid::Grid;
 use indicatif::{ParallelProgressIterator, ProgressStyle};
 use itertools::Itertools;
 use line_drawing::WalkGrid;
+use num::integer::Roots;
 use rayon::prelude::*;
 
 pub fn part1() {
@@ -130,19 +131,14 @@ pub fn part2() {
     }
     println!("{:?}", galaxies);
 
-    let combos = galaxies.iter().combinations(2).collect_vec();
-    let style = ProgressStyle::with_template(
-        "[{elapsed_precise} -> {eta_precise}] {wide_bar} {pos:>7}/{len:7}",
-    )
-    .unwrap();
-
-    let sum: usize = combos
-        .par_iter()
-        .progress_with_style(style)
+    let sum: i64 = galaxies
+        .iter()
+        .combinations(2)
         .map(|galaxies| {
             let &a = galaxies[0];
             let &b = galaxies[1];
-            WalkGrid::new(a, b).count() - 1
+            let dist = (b.0 - a.0).abs() + (b.1 - a.1).abs();
+            dist
         })
         .sum();
 
