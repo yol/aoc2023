@@ -1466,8 +1466,8 @@ fn day10() {
     println!("{}", loop_area);
 }
 
-mod day12;
+mod day13;
 
 fn main() {
-    day12::part1();
+    day13::part2();
 }
