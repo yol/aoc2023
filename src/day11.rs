@@ -8,6 +8,7 @@ use grid::Grid;
 use itertools::Itertools;
 use line_drawing::WalkGrid;
 
+// 00:41:57
 pub fn part1() {
     let file = File::open(Path::new("inp11_2.txt")).unwrap();
     let mut lines = io::BufReader::new(file).lines().peekable();
@@ -74,6 +75,7 @@ pub fn part1() {
     println!("{}", sum / 2);
 }
 
+// 01:08:41
 pub fn part2() {
     let file = File::open(Path::new("inp11_2.txt")).unwrap();
     let mut lines = io::BufReader::new(file).lines().peekable();
