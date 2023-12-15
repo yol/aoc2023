@@ -1,4 +1,4 @@
-#![feature(get_many_mut, map_try_insert)]
+#![feature(get_many_mut, map_try_insert, ascii_char)]
 
 use regex::Regex;
 use std::cmp::{max, min};
@@ -1466,9 +1466,9 @@ fn day10() {
     println!("{}", loop_area);
 }
 
-mod day14;
+mod day15;
 mod util;
 
 fn main() {
-    day14::part2();
+    day15::part2();
 }
