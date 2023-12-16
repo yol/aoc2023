@@ -30,24 +30,26 @@ pub fn part2() {
     let mut boxes = vec![Vec::<Slot>::new(); 256];
 
     for instr in instructions {
+        fn get_box<'a>(boxes: &'a mut Vec<Vec<Slot>>, label: &str) -> &'a mut Vec<Slot> {
+            &mut boxes[hash(label) as usize]
+        }
+        fn find_lens<'a>(tbox: &'a mut Vec<Slot>, label: &str) -> Option<(usize, &'a mut Slot)> {
+            tbox.iter_mut().find_position(|s| s.lens_label == label)
+        }
+
         if instr.chars().last().unwrap() == '-' {
             let lens_label = &instr[0..instr.chars().count() - 1];
-            let box_no = hash(lens_label) as usize;
-            let tbox = &mut boxes[box_no];
-            let pos = tbox.iter().find_position(|s| s.lens_label == lens_label);
-            if let Some(pos) = pos {
-                tbox.remove(pos.0);
+            let tbox = get_box(&mut boxes, lens_label);
+            if let Some(entry) = find_lens(tbox, lens_label) {
+                let pos = entry.0;
+                tbox.remove(pos);
             }
         } else {
             let (lens_label, focal_length) = instr.split_once('=').unwrap();
             let focal_length = focal_length.parse().unwrap();
-            let box_no = hash(lens_label) as usize;
-            let tbox = &mut boxes[box_no];
-            let pos = tbox
-                .iter_mut()
-                .find_position(|s| s.lens_label == lens_label);
-            if let Some(pos) = pos {
-                pos.1.focal_length = focal_length;
+            let tbox = get_box(&mut boxes, lens_label);
+            if let Some(entry) = find_lens(tbox, lens_label) {
+                entry.1.focal_length = focal_length;
             } else {
                 tbox.push(Slot {
                     lens_label: lens_label.to_string(),
