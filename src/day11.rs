@@ -19,7 +19,7 @@ pub fn part1() {
         .flat_map(|l| l.unwrap().chars().map(|c| c == '#').collect::<Vec<_>>())
         .collect();
 
-    let mut grid = Grid::from_vec(grid_vec, first_line.len());
+    let grid = Grid::from_vec(grid_vec, first_line.len());
 
     println!(
         "{}",

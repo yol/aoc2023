@@ -1,5 +1,4 @@
 use std::{
-    collections::VecDeque,
     fs::File,
     io::{self, BufRead},
     path::Path,
@@ -86,7 +85,7 @@ pub fn part2() {
     for l in lines {
         let line = l.unwrap();
         if line.is_empty() {
-            let mut grid = Grid::from_vec(grid_vec, grid_w);
+            let grid = Grid::from_vec(grid_vec, grid_w);
 
             println!(
                 "{}",

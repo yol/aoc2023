@@ -7,7 +7,6 @@ use std::{
 
 use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
-use queues::Queue;
 use rayon::prelude::*;
 
 pub fn part1() {
@@ -173,7 +172,7 @@ pub fn part2() {
                     }
                     Some(x) => x.0,
                 };
-                let mut spring = &entry.spring[next_not_ok_char_idx..];
+                let spring = &entry.spring[next_not_ok_char_idx..];
 
                 // Skip DAMAGED springs at the start and subtract them from the group to place
                 /*let next_unk_char_idx = spring

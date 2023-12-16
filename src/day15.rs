@@ -16,6 +16,7 @@ pub fn part1() {
     println!("{}", sum);
 }
 
+// 00:40:34
 pub fn part2() {
     let lines = util::file_lines("inp15_2.txt");
     let instructions = lines[0].split(',');
