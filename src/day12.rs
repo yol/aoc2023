@@ -104,6 +104,7 @@ pub fn part2() {
 
     type Spring = Vec<i8>;
     type CacheKey = (Spring, Vec<usize>);
+    type CacheEntry = (usize, bool);
 
     //let mut cache: HashMap<CacheKey, usize> = HashMap::new();
 
@@ -117,7 +118,7 @@ pub fn part2() {
 
     let mut iteri = 0;
 
-    let mut cache: HashMap<CacheKey, usize> = HashMap::new();
+    let mut cache: HashMap<CacheKey, CacheEntry> = HashMap::new();
 
     let spring_combinations = lines
         .iter()
@@ -184,7 +185,8 @@ pub fn part2() {
                 if entry.is_sentinel {
                     cache
                         .entry((entry.spring.clone(), entry.groups_to_assign.clone()))
-                        .or_insert(0);
+                        .or_insert((0, false))
+                        .1 = true;
                     continue;
                 }
 
@@ -201,49 +203,139 @@ pub fn part2() {
                     is_sentinel: true,
                 });
 
-                let mut add_queue = |next_spring: Spring, next_groups_to_assign: Vec<usize>| {
-                    assert!(!next_groups_to_assign.is_empty());
-                    if next_spring.is_empty() {
-                        return;
-                    }
-                    // This could be a bit more intelligent
-                    let total_not_ok_needed = next_groups_to_assign.iter().sum::<usize>();
-                    let total_not_ok = next_spring.iter().filter(|&&c| c != OK).count();
-                    if total_not_ok < total_not_ok_needed {
-                        if cfg!(debug_assertions) {
-                            //println!("-> exit4");
-                        }
-                        return;
-                    }
-
-                    let mut next_predecessors = entry.predecessors.clone();
-                    next_predecessors.push((spring.into(), entry.groups_to_assign.clone()));
-                    let next_entry = QueueEntry {
-                        spring: next_spring,
-                        groups_to_assign: next_groups_to_assign,
-                        predecessors: next_predecessors,
-                        is_sentinel: false,
-                    };
-                    q.push_back(next_entry);
-                };
-
                 // Check cache
                 if let Some(&cache_entry) =
                     cache.get(&(spring.to_vec(), entry.groups_to_assign.clone()))
                 {
                     if cfg!(debug_assertions) {
-                        println!("!!OK!! cache: {}", cache_entry);
+                        println!("!!OK!! cache: {}", cache_entry.0);
                     }
-                    ok_combinations += cache_entry;
+                    assert!(cache_entry.1);
+                    ok_combinations += cache_entry.0;
                     // Update cache
                     for predecessor in &entry.predecessors {
                         // FIXME clone()?
-                        *cache.entry(predecessor.clone()).or_insert(0) += cache_entry;
+                        cache.entry(predecessor.clone()).or_insert((0, false)).0 += cache_entry.0;
                     }
                     continue;
                 }
 
-                let group_to_assign = entry.groups_to_assign[0];
+                let mut add_queue =
+                    |mut next_spring: Spring, mut next_groups_to_assign: Vec<usize>| {
+                        if next_spring.is_empty() {
+                            assert!(!next_groups_to_assign.is_empty());
+                            return;
+                        }
+
+                        let orig_next_spring = next_spring.clone();
+                        let orig_next_groups_to_assign = next_groups_to_assign.clone();
+
+                        let mut add_finisher = || {
+                            println!("--- OK ---");
+                            print_entry(&entry);
+                            println!("----------\n");
+                            // Finished
+                            ok_combinations += 1;
+                            // Update cache
+                            for predecessor in &entry.predecessors {
+                                // FIXME clone()?
+                                cache.entry(predecessor.clone()).or_insert((0, false)).0 += 1;
+                            }
+                            cache
+                                .entry((spring.to_vec(), entry.groups_to_assign.clone()))
+                                .or_insert((0, false))
+                                .0 += 1;
+                        };
+
+                        /// ###?##. [3]
+                        // Pop off groups
+                        let mut group_run_size = 0;
+                        let mut cut_idx = 0;
+                        for (i, &c) in next_spring.iter().enumerate() {
+                            match c {
+                                DAMAGED => {
+                                    group_run_size += 1;
+                                }
+                                OK => {
+                                    if group_run_size > 0 {
+                                        if group_run_size != next_groups_to_assign[0] {
+                                            // Mismatch
+                                            return;
+                                        }
+                                        // Pop group
+                                        next_groups_to_assign = next_groups_to_assign[1..].to_vec();
+                                    }
+                                    group_run_size = 0;
+                                    cut_idx = i;
+                                    if next_groups_to_assign.is_empty() {
+                                        break;
+                                    }
+                                }
+                                UNKNOWN => break,
+                                _ => panic!(),
+                            }
+                        }
+                        next_spring = next_spring[cut_idx..].to_vec();
+
+                        let total_unknown = next_spring.iter().filter(|&&c| c == UNKNOWN).count();
+
+                        if total_unknown == 0 {
+                            if next_groups_to_assign.is_empty()
+                                && next_spring.iter().all(|&c| c != DAMAGED)
+                            {
+                                add_finisher();
+                            } else {
+                                // Nothing more to generate, but assignments open
+                            }
+                            return;
+                        }
+                        if next_groups_to_assign.is_empty() {
+                            // Nothing more to assign, but unknowns open
+                            if next_spring.iter().all(|&c| c != DAMAGED) {
+                                // Only OK-ish parts remaining
+                                // -> match!
+                                add_finisher();
+                            } else {
+                                // Damaged remaining but no groups to assign
+                            }
+                            return;
+                        }
+
+                        let mut next_predecessors = entry.predecessors.clone();
+                        next_predecessors.push((spring.into(), entry.groups_to_assign.clone()));
+                        let next_entry = QueueEntry {
+                            spring: next_spring,
+                            groups_to_assign: next_groups_to_assign,
+                            predecessors: next_predecessors,
+                            is_sentinel: false,
+                        };
+                        q.push_back(next_entry);
+                    };
+
+                // Fact: Spring starts with ? or # after processing above
+
+                let next_unknown_idx = spring.iter().find_position(|&&c| c == UNKNOWN).unwrap().0;
+
+                // Pursue "OK" case
+                {
+                    if next_unknown_idx == 0 {
+                        // Shrink spring by one new "OK" field, groups to assign stay the same
+                        add_queue(spring[1..].to_vec(), entry.groups_to_assign.clone());
+                    } else {
+                        let mut new_spring_ok = spring.to_vec();
+                        new_spring_ok[next_unknown_idx] = OK;
+                        add_queue(new_spring_ok, entry.groups_to_assign.clone());
+                    }
+                }
+
+                // Pursue "DAMAGED" case
+                {
+                    let mut new_spring_damaged = spring.to_vec();
+                    new_spring_damaged[next_unknown_idx] = DAMAGED;
+                    add_queue(new_spring_damaged, entry.groups_to_assign.clone())
+                }
+
+                /*let group_to_assign = entry.groups_to_assign[0];
 
                 // Now the spring starts with UNKNOWN, try to place the next group somewhere
                 let max_group_len_from_here = spring
@@ -333,14 +425,14 @@ pub fn part2() {
                 add_queue(
                     spring[max_group_len_from_here..].into(),
                     entry.groups_to_assign.clone(),
-                );
+                );*/
                 if cfg!(debug_assertions) {
                     //println!("--");
                 }
             }
 
             println!(
-                "====== {} / {}",
+                "====== {} / {:?}",
                 ok_combinations,
                 cache
                     .get(&(start_spring.to_vec(), grouped_record.clone()))
@@ -349,15 +441,16 @@ pub fn part2() {
 
             assert_eq!(
                 ok_combinations,
-                *cache
+                cache
                     .get(&(start_spring.to_vec(), grouped_record.clone()))
                     .unwrap()
+                    .0
             );
 
             // FIXME use cache
             ok_combinations
         });
     let sum: usize = spring_combinations.sum();
-    println!("[4780439962549]");
+    println!("[4780439962549] [4795153189721]");
     println!(" {}", sum);
 }
