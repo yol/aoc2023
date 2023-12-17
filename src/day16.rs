@@ -3,72 +3,7 @@ use std::{cmp::max, collections::VecDeque};
 use grid::Grid;
 
 use super::util;
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum Direction {
-    N = 0,
-    E = 1,
-    S = 2,
-    W = 3,
-}
-
-impl Direction {
-    fn opposite(&self) -> Direction {
-        match self {
-            Direction::N => Direction::S,
-            Direction::E => Direction::W,
-            Direction::S => Direction::N,
-            Direction::W => Direction::E,
-        }
-    }
-    fn repr(&self) -> char {
-        match self {
-            Direction::N => '╵',
-            Direction::E => '╶',
-            Direction::S => '╷',
-            Direction::W => '╴',
-        }
-    }
-    fn is_horizontal(self) -> bool {
-        self == Direction::E || self == Direction::W
-    }
-    fn is_vertical(self) -> bool {
-        self == Direction::N || self == Direction::S
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-struct Position {
-    x: usize,
-    y: usize,
-}
-impl Position {
-    fn as_grid_pos(self) -> (usize, usize) {
-        (self.y, self.x)
-    }
-
-    fn advance_in_grid<T>(self, dir: Direction, grid: &Grid<T>) -> Option<Position> {
-        match dir {
-            Direction::N if self.y >= 1 => Some(Position {
-                x: self.x,
-                y: self.y - 1,
-            }),
-            Direction::E if self.x < grid.cols() - 1 => Some(Position {
-                x: self.x + 1,
-                y: self.y,
-            }),
-            Direction::S if self.y < grid.rows() - 1 => Some(Position {
-                x: self.x,
-                y: self.y + 1,
-            }),
-            Direction::W if self.x >= 1 => Some(Position {
-                x: self.x - 1,
-                y: self.y,
-            }),
-            _ => None,
-        }
-    }
-}
+use super::util::{Direction, Position};
 
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]

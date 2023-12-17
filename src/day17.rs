@@ -1,6 +1,9 @@
-use super::util::{file_lines, Direction, Position};
+use crate::util::parse_digit;
+
+use super::util::{build_grid, file_lines, Direction, Position};
 use grid::Grid;
 
+use itertools::Itertools;
 use pathfinding::prelude::astar;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
@@ -143,16 +146,7 @@ pub fn part1() {
 pub fn part2() {
     let lines = file_lines("inp17_2.txt");
 
-    let first_line = &lines[0];
-    let grid_vec: Vec<_> = lines
-        .iter()
-        .flat_map(|l| {
-            l.chars()
-                .map(|c| c.to_digit(10).unwrap() as u8)
-                .collect::<Vec<_>>()
-        })
-        .collect();
-    let grid = Grid::from_vec(grid_vec, first_line.len());
+    let grid = build_grid(&lines, parse_digit);
 
     let start_pos = Position { x: 0, y: 0 };
     let end_pos = Position {
@@ -174,23 +168,16 @@ pub fn part2() {
                 ]
             }
             Some(dir) => {
-                let mut succ = vec![];
-
-                let mut try_dir = |dir| {
-                    if let Some(next_state) = s.advance_in_grid_with_dir_2(&grid, dir) {
-                        succ.push(next_state);
-                    }
-                };
-
-                for new_dir in [Direction::N, Direction::E, Direction::S, Direction::W] {
-                    if new_dir == dir.opposite() {
-                        // Never go back
-                        continue;
-                    }
-                    try_dir(new_dir);
-                }
-
-                succ
+                [Direction::N, Direction::E, Direction::S, Direction::W]
+                    .iter()
+                    .filter_map(|&new_dir| {
+                        if new_dir == dir.opposite() {
+                            // Never go back
+                            return None;
+                        }
+                        s.advance_in_grid_with_dir_2(&grid, new_dir)
+                    })
+                    .collect_vec()
             }
         },
         |s| s.pos.manhattan_distance_to(end_pos),

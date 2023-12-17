@@ -1,4 +1,5 @@
 #![feature(get_many_mut, map_try_insert, ascii_char)]
+#![allow(dead_code)]
 
 use regex::Regex;
 use std::cmp::{max, min};
@@ -1472,8 +1473,9 @@ mod day13;
 mod day14;
 mod day15;
 mod day16;
+mod day17;
 mod util;
 
 fn main() {
-    day12::part2();
+    day17::part2();
 }

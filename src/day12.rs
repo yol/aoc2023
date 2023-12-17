@@ -227,9 +227,6 @@ pub fn part2() {
                             return;
                         }
 
-                        let orig_next_spring = next_spring.clone();
-                        let orig_next_groups_to_assign = next_groups_to_assign.clone();
-
                         let mut add_finisher = || {
                             println!("--- OK ---");
                             print_entry(&entry);
@@ -247,7 +244,6 @@ pub fn part2() {
                                 .0 += 1;
                         };
 
-                        /// ###?##. [3]
                         // Pop off groups
                         let mut group_run_size = 0;
                         let mut cut_idx = 0;
