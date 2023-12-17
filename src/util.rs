@@ -44,7 +44,7 @@ where
     Grid::from_vec(grid_vec, first_line.len())
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, enum_iterator::Sequence)]
 pub enum Direction {
     N = 0,
     E = 1,
@@ -53,6 +53,10 @@ pub enum Direction {
 }
 
 impl Direction {
+    pub fn all() -> enum_iterator::All<Direction> {
+        enum_iterator::all::<Self>()
+    }
+
     pub fn opposite(&self) -> Direction {
         match self {
             Direction::N => Direction::S,

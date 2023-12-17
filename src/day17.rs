@@ -159,26 +159,16 @@ pub fn part2() {
             dir: None,
             steps_in_dir: 0,
         },
-        |s| match s.dir {
-            None => {
-                // At the start: try both possible starting directions
-                vec![
-                    s.advance_in_grid_with_dir_2(&grid, Direction::E).unwrap(),
-                    s.advance_in_grid_with_dir_2(&grid, Direction::S).unwrap(),
-                ]
-            }
-            Some(dir) => {
-                [Direction::N, Direction::E, Direction::S, Direction::W]
-                    .iter()
-                    .filter_map(|&new_dir| {
-                        if new_dir == dir.opposite() {
-                            // Never go back
-                            return None;
-                        }
-                        s.advance_in_grid_with_dir_2(&grid, new_dir)
-                    })
-                    .collect_vec()
-            }
+        |s| {
+            Direction::all()
+                .filter_map(|new_dir| {
+                    if s.dir.is_some() && new_dir == s.dir.unwrap().opposite() {
+                        // Never go back
+                        return None;
+                    }
+                    s.advance_in_grid_with_dir_2(&grid, new_dir)
+                })
+                .collect_vec()
         },
         |s| s.pos.manhattan_distance_to(end_pos),
         |s| s.pos == end_pos,
