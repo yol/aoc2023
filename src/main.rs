@@ -1474,8 +1474,9 @@ mod day14;
 mod day15;
 mod day16;
 mod day17;
+mod day18;
 mod util;
 
 fn main() {
-    day17::part2();
+    day18::part1();
 }

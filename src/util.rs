@@ -44,6 +44,19 @@ where
     Grid::from_vec(grid_vec, first_line.len())
 }
 
+pub fn print_grid<T, F>(grid: &Grid<T>, map_fn: F)
+where
+    F: Fn(&T) -> char,
+{
+    println!(
+        "{}",
+        grid.iter_rows()
+            .map(|row| String::from_iter(row.map(&map_fn)))
+            .collect::<Vec<String>>()
+            .join("\n")
+    );
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, enum_iterator::Sequence)]
 pub enum Direction {
     N = 0,
