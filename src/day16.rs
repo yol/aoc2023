@@ -268,11 +268,18 @@ pub fn part2() {
     let max_col_energy = (0..grid.cols())
         .map(|x| {
             max(
-                energize_from(Position { x, y: 0 }, Direction::S, &mut grid),
                 energize_from(
                     Position {
-                        x,
-                        y: grid.rows() - 1,
+                        x: x as isize,
+                        y: 0,
+                    },
+                    Direction::S,
+                    &mut grid,
+                ),
+                energize_from(
+                    Position {
+                        x: x as isize,
+                        y: (grid.rows() - 1) as isize,
                     },
                     Direction::N,
                     &mut grid,
@@ -284,11 +291,18 @@ pub fn part2() {
     let max_row_energy = (0..grid.rows())
         .map(|y| {
             max(
-                energize_from(Position { x: 0, y }, Direction::E, &mut grid),
                 energize_from(
                     Position {
-                        x: grid.cols() - 1,
-                        y,
+                        x: 0,
+                        y: y as isize,
+                    },
+                    Direction::E,
+                    &mut grid,
+                ),
+                energize_from(
+                    Position {
+                        x: (grid.cols() - 1) as isize,
+                        y: y as isize,
                     },
                     Direction::W,
                     &mut grid,

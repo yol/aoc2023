@@ -4,6 +4,7 @@ use std::{
     path::Path,
 };
 
+use std::fmt;
 use std::fmt::Debug;
 use std::str::FromStr;
 
@@ -57,7 +58,7 @@ where
     );
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, enum_iterator::Sequence)]
+#[derive(PartialEq, Eq, Clone, Copy, Hash, enum_iterator::Sequence)]
 pub enum Direction {
     N = 0,
     E = 1,
@@ -70,7 +71,7 @@ impl Direction {
         enum_iterator::all::<Self>()
     }
 
-    pub fn opposite(&self) -> Direction {
+    pub fn opposite(self) -> Direction {
         match self {
             Direction::N => Direction::S,
             Direction::E => Direction::W,
@@ -78,12 +79,28 @@ impl Direction {
             Direction::W => Direction::E,
         }
     }
+    pub fn rot_cw(self) -> Direction {
+        match self {
+            Direction::N => Direction::E,
+            Direction::E => Direction::S,
+            Direction::S => Direction::W,
+            Direction::W => Direction::N,
+        }
+    }
+    pub fn rot_ccw(self) -> Direction {
+        match self {
+            Direction::N => Direction::W,
+            Direction::E => Direction::N,
+            Direction::S => Direction::E,
+            Direction::W => Direction::S,
+        }
+    }
     pub fn repr(&self) -> char {
         match self {
-            Direction::N => '╵',
-            Direction::E => '╶',
-            Direction::S => '╷',
-            Direction::W => '╴',
+            Direction::N => '↑',
+            Direction::E => '→',
+            Direction::S => '↓',
+            Direction::W => '←',
         }
     }
     pub fn is_horizontal(self) -> bool {
@@ -92,16 +109,47 @@ impl Direction {
     pub fn is_vertical(self) -> bool {
         self == Direction::N || self == Direction::S
     }
+    pub fn is_perpendicular_to(self, other: Direction) -> bool {
+        (self.is_horizontal() && !other.is_horizontal())
+            || (self.is_vertical() && !other.is_vertical())
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+impl Debug for Direction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.repr())
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Position {
-    pub x: usize,
-    pub y: usize,
+    pub x: isize,
+    pub y: isize,
 }
 impl Position {
     pub fn as_grid_pos(self) -> (usize, usize) {
-        (self.y, self.x)
+        (self.y as usize, self.x as usize)
+    }
+
+    pub fn advance_in_dir_by(self, dir: Direction, extent: isize) -> Position {
+        match dir {
+            Direction::N => Position {
+                x: self.x,
+                y: self.y - extent,
+            },
+            Direction::E => Position {
+                x: self.x + extent,
+                y: self.y,
+            },
+            Direction::S => Position {
+                x: self.x,
+                y: self.y + extent,
+            },
+            Direction::W => Position {
+                x: self.x - extent,
+                y: self.y,
+            },
+        }
     }
 
     pub fn advance_in_grid<T>(self, dir: Direction, grid: &Grid<T>) -> Option<Position> {
@@ -110,11 +158,11 @@ impl Position {
                 x: self.x,
                 y: self.y - 1,
             }),
-            Direction::E if self.x < grid.cols() - 1 => Some(Position {
+            Direction::E if (self.x as usize) < grid.cols() - 1 => Some(Position {
                 x: self.x + 1,
                 y: self.y,
             }),
-            Direction::S if self.y < grid.rows() - 1 => Some(Position {
+            Direction::S if (self.y as usize) < grid.rows() - 1 => Some(Position {
                 x: self.x,
                 y: self.y + 1,
             }),
@@ -127,7 +175,12 @@ impl Position {
     }
 
     pub fn manhattan_distance_to(self, other: Position) -> usize {
-        (other.x as isize - self.x as isize).abs() as usize
-            + (other.y as isize - self.y as isize).abs() as usize
+        (other.x - self.x).abs() as usize + (other.y - self.y).abs() as usize
+    }
+}
+
+impl Debug for Position {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({},{})", self.x, self.y)
     }
 }

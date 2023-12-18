@@ -90,8 +90,8 @@ pub fn part1() {
 
     let start_pos = Position { x: 0, y: 0 };
     let end_pos = Position {
-        x: grid.cols() - 1,
-        y: grid.rows() - 1,
+        x: (grid.cols() - 1) as isize,
+        y: (grid.rows() - 1) as isize,
     };
     fn successor_tuple(new_state: &SearchState, grid: &Grid<u8>) -> (SearchState, usize) {
         (*new_state, grid[new_state.pos.as_grid_pos()] as usize)
@@ -150,8 +150,8 @@ pub fn part2() {
 
     let start_pos = Position { x: 0, y: 0 };
     let end_pos = Position {
-        x: grid.cols() - 1,
-        y: grid.rows() - 1,
+        x: (grid.cols() - 1) as isize,
+        y: (grid.rows() - 1) as isize,
     };
     let result = astar(
         &SearchState {
