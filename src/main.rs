@@ -1,4 +1,4 @@
-#![feature(get_many_mut, map_try_insert, ascii_char)]
+#![feature(get_many_mut, map_try_insert, ascii_char, slice_split_once)]
 #![allow(dead_code)]
 
 use regex::Regex;
@@ -1475,8 +1475,9 @@ mod day15;
 mod day16;
 mod day17;
 mod day18;
+mod day19;
 mod util;
 
 fn main() {
-    day18::part2();
+    day19::part1();
 }
