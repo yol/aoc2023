@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::{
+    cmp::{max, min},
+    collections::{HashMap, VecDeque},
+};
 
 use super::util::file_lines;
 use itertools::Itertools;
@@ -61,7 +64,7 @@ impl Verdict {
 struct ComparisonInstruction {
     tag: ValueTag,
     op: Operator,
-    value: i64,
+    value: usize,
     verdict: Verdict,
 }
 
@@ -71,25 +74,39 @@ enum Instruction {
     Judge(Verdict),
 }
 
-#[derive(Debug, PartialEq, Eq)]
-struct Part {
-    x: i64,
-    m: i64,
-    a: i64,
-    s: i64,
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+struct PartGen<T> {
+    x: T,
+    m: T,
+    a: T,
+    s: T,
 }
 
-impl Part {
-    fn get_tagged(&self, tag: ValueTag) -> i64 {
+impl<T> PartGen<T> {
+    fn get_tagged(&self, tag: ValueTag) -> &T {
         match tag {
-            ValueTag::X => self.x,
-            ValueTag::M => self.m,
-            ValueTag::A => self.a,
-            ValueTag::S => self.s,
+            ValueTag::X => &self.x,
+            ValueTag::M => &self.m,
+            ValueTag::A => &self.a,
+            ValueTag::S => &self.s,
         }
     }
 
-    fn sum(&self) -> i64 {
+    // FIXME necessary to implement twice?
+    fn get_tagged_mut(&mut self, tag: ValueTag) -> &mut T {
+        match tag {
+            ValueTag::X => &mut self.x,
+            ValueTag::M => &mut self.m,
+            ValueTag::A => &mut self.a,
+            ValueTag::S => &mut self.s,
+        }
+    }
+}
+
+type Part = PartGen<usize>;
+
+impl Part {
+    fn sum(&self) -> usize {
         self.x + self.m + self.a + self.s
     }
 }
@@ -172,8 +189,8 @@ pub fn part1() {
                     Instruction::Compare(c) => {
                         let val = part.get_tagged(c.tag);
                         let comp_match = match c.op {
-                            Operator::Gt => val > c.value,
-                            Operator::Lt => val < c.value,
+                            Operator::Gt => *val > c.value,
+                            Operator::Lt => *val < c.value,
                         };
                         if comp_match {
                             match &c.verdict {
@@ -204,10 +221,130 @@ pub fn part1() {
         }
     });
 
-    let sum: i64 = accepted_parts.map(|p| p.sum()).sum();
+    let sum: usize = accepted_parts.map(|p| p.sum()).sum();
     println!("{}", sum);
 }
 
 pub fn part2() {
-    let lines = file_lines("inp19_1.txt");
+    let lines = file_lines("inp19_2.txt");
+    let (workflows, _) = parse(&lines);
+
+    // Start and end, inclusive
+    type TagRange = (usize, usize);
+
+    type PartRange = PartGen<TagRange>;
+
+    const FULL_RANGE: TagRange = (1, 4000);
+    let start_part_range = PartRange {
+        x: FULL_RANGE,
+        m: FULL_RANGE,
+        a: FULL_RANGE,
+        s: FULL_RANGE,
+    };
+
+    #[derive(Debug)]
+    struct QueueEntry {
+        // FIXME how to include a reference here?
+        workflow_name: String,
+        workflow_index: usize,
+        part_range: PartRange,
+    }
+
+    let mut q = VecDeque::from([QueueEntry {
+        // FIXME how to get a literal as String?
+        workflow_name: "in".to_string(),
+        workflow_index: 0,
+        part_range: start_part_range,
+    }]);
+
+    let mut accepted_part_ranges = vec![];
+
+    fn range_overlap(a: TagRange, b: TagRange) -> Option<TagRange> {
+        let start = max(a.0, b.0);
+        let end = min(a.1, b.1);
+        if end >= start {
+            Some((start, end))
+        } else {
+            None
+        }
+    }
+
+    while let Some(entry) = q.pop_back() {
+        let workflow = &workflows[&entry.workflow_name];
+        let instr = &workflow[entry.workflow_index];
+
+        match instr {
+            Instruction::Compare(c) => {
+                let &prev_tag_range = entry.part_range.get_tagged(c.tag);
+                let op_val = c.value;
+
+                let new_tag_range_match = range_overlap(
+                    prev_tag_range,
+                    match c.op {
+                        Operator::Gt => (op_val + 1, FULL_RANGE.1),
+                        Operator::Lt => (FULL_RANGE.0, op_val - 1),
+                    },
+                );
+                if let Some(new_tag_range_match) = new_tag_range_match {
+                    let mut new_part_range = entry.part_range.clone();
+                    *new_part_range.get_tagged_mut(c.tag) = new_tag_range_match;
+                    match &c.verdict {
+                        Verdict::Accept => accepted_part_ranges.push(new_part_range),
+                        Verdict::Reject => {}
+                        Verdict::GoTo(w) => {
+                            q.push_back(QueueEntry {
+                                workflow_name: w.clone(),
+                                workflow_index: 0,
+                                part_range: new_part_range,
+                            });
+                        }
+                    }
+                }
+
+                let new_tag_range_mismatch = range_overlap(
+                    prev_tag_range,
+                    match c.op {
+                        Operator::Gt => (FULL_RANGE.0, op_val),
+                        Operator::Lt => (op_val, FULL_RANGE.1),
+                    },
+                );
+                if let Some(new_tag_range_mismatch) = new_tag_range_mismatch {
+                    let mut new_part_range = entry.part_range.clone();
+                    *new_part_range.get_tagged_mut(c.tag) = new_tag_range_mismatch;
+                    q.push_back(QueueEntry {
+                        workflow_name: entry.workflow_name.clone(),
+                        workflow_index: entry.workflow_index + 1,
+                        part_range: new_part_range,
+                    });
+                }
+            }
+            Instruction::Judge(v) => match v {
+                Verdict::Accept => {
+                    // Finished, register and give up the branch
+                    accepted_part_ranges.push(entry.part_range);
+                }
+                Verdict::Reject => {
+                    // Give up this branch
+                }
+                Verdict::GoTo(w) => {
+                    q.push_back(QueueEntry {
+                        workflow_name: w.clone(),
+                        workflow_index: 0,
+                        part_range: entry.part_range,
+                    });
+                }
+            },
+        }
+    }
+
+    fn range_len(r: TagRange) -> usize {
+        r.1 - r.0 + 1
+    }
+
+    let sum: usize = accepted_part_ranges
+        .iter()
+        .map(|pr| range_len(pr.x) * range_len(pr.m) * range_len(pr.a) * range_len(pr.s))
+        .sum();
+
+    println!("{}", sum);
 }

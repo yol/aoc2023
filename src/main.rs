@@ -1479,5 +1479,5 @@ mod day19;
 mod util;
 
 fn main() {
-    day19::part1();
+    day19::part2();
 }
