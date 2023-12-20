@@ -76,6 +76,15 @@ enum ModuleBehavior {
     Conjunction(ConjunctionModule),
 }
 
+impl ModuleBehavior {
+    fn ff_state(&self) -> bool {
+        let ModuleBehavior::FlipFlop(fv) = self else {
+            panic!()
+        };
+        fv.state
+    }
+}
+
 impl ModBehaviorImpl for ModuleBehavior {
     fn process_pulse(&mut self, origin: &str, p: bool) -> Option<bool> {
         // FIXME not so nice
@@ -94,6 +103,8 @@ struct Module {
     behavior: ModuleBehavior,
 }
 
+use rand::seq::SliceRandom;
+
 pub fn part1() {
     let lines = file_lines("inp20_2.txt");
 
@@ -102,10 +113,11 @@ pub fn part1() {
     for line in &lines {
         let parts = line.split_whitespace().collect_vec();
         let behavior = &parts[0][0..1];
-        let targets = parts[2..]
+        let mut targets = parts[2..]
             .iter()
             .map(|s| s.strip_suffix(',').unwrap_or(s).to_string())
             .collect_vec();
+        targets.shuffle(&mut rand::thread_rng());
         match behavior {
             "b" => modules.insert(
                 parts[0].to_string(),
@@ -201,6 +213,39 @@ pub fn part1() {
 pub fn part2() {
     let lines = file_lines("inp20_2.txt");
 
+    /*let mut n1 = 1_u64;
+    let mut n2 = 1_u64;
+    let mut n3 = 1_u64;
+
+    const LCMFAC1: u64 = 4051;
+    const LCMFAC2: u64 = 3929;
+    const LINOFF1: u64 = 3760;
+    const LINSCALE1: u64 = 3438;
+    const LINOFF2: u64 = 3820;
+    const LINSCALE2: u64 = 3550;
+
+    loop {
+        let r1 = n1 * LCMFAC1 * LCMFAC2;
+        let r2 = LINOFF1 + n2 * LINSCALE1;
+        let mut r3 = LINOFF2 + n3 * LINSCALE2;
+        if r1 == r2 {
+            println!("n1: {}, n2: {}  ==> {}", n1, n2, r1);
+            while r3 < r1 {
+                n3 += 1;
+                r3 += LINSCALE2;
+            }
+            if r3 == r1 {
+                println!("n1: {}, n2: {}, n3: {}  ==> {}", n1, n2, n3, r1);
+                return;
+            }
+        }
+        if r1 > r2 {
+            n2 += 1;
+        } else {
+            n1 += 1;
+        }
+    }*/
+
     type ModuleMap = BTreeMap<String, Module>;
     let mut modules = ModuleMap::new();
     for line in &lines {
@@ -210,6 +255,7 @@ pub fn part2() {
             .iter()
             .map(|s| s.strip_suffix(',').unwrap_or(s).to_string())
             .collect_vec();
+        //targets.reverse();
         match behavior {
             "b" => modules.insert(
                 parts[0].to_string(),
@@ -235,7 +281,7 @@ pub fn part2() {
             _ => panic!(),
         };
     }
-    println!("{:?}", modules);
+    //println!("{:?}", modules);
 
     let module_names = modules.keys().cloned().collect_vec();
     for module_name in module_names {
@@ -248,13 +294,30 @@ pub fn part2() {
             if let ModuleBehavior::Conjunction(cm) =
                 &mut modules.get_mut(&next_module).unwrap().behavior
             {
-                println!("add_pre {} to {}", module_name, next_module);
+                //println!("add_pre {} to {}", module_name, next_module);
                 cm.add_pre(&module_name);
             }
         }
     }
 
-    println!("{:?}", modules);
+    // println!("{:?}", modules);
+
+    println!("digraph {{");
+
+    for module in &modules {
+        let color = match module.1.behavior {
+            ModuleBehavior::Broadcaster(_) => "red",
+            ModuleBehavior::Conjunction(_) => "blue",
+            ModuleBehavior::FlipFlop(_) => "green",
+        };
+        println!("{} [color = {}]", module.0, color);
+        for (i, next_module) in module.1.next_modules.iter().enumerate() {
+            println!("{} -> {} [label={}]", module.0, next_module, i);
+        }
+    }
+    println!("}}");
+
+    //return;
 
     struct QueueEntry {
         pulse: bool,
@@ -262,88 +325,161 @@ pub fn part2() {
         module_name: String,
     }
 
-    // [dg] state: {"lk": false, "sp": false, "xt": false, "zv": false} }
-
     // 259356131034 too low
-    // 28623445771888 too low#
+    // 28623445771888 too low
+    // 27162814304704 (too low)
+    // 64377328301638 wrong
+    // 229215609826339
 
-    // 1st: 3823 ...+3823 ...
-    // 2nd: 3928 x2 + 3726 -> 7690 x2 +3726 -> 11452
-    // 3rd: 3767 ...+3767 ...
-    // 4th: 4048 x2 + 4006 -> 8054 x2 +4006 -> 12060
+    // rc -> dv: 3760 + n * 3438
+    // nt -> xq:    0 + n * 3929
+    // mg -> jc: 3820 + n * 3550
+    // kx -> vv:    0 + n * 4051
+    // lcm(4051,3929) -> 15916379
+    // --> 47468690402020: wrong
 
-    //let pulse
+    // rc -> dv:    0 + n * 3767
+    // nt -> xq:    0 + n * 3929
+    // mg -> jc:    0 + n * 3823
+    // kx -> vv:    0 + n * 4051
+    // lcm 229215609826339: correct
 
-    let mut last = 0;
-    let idx = (1..)
-        .find(|&i| {
-            if (i % 100_000) == 0 {
-                println!("!! {}", i);
+    // independent subunits:
+    // rc -> dv, nt -> xq, mg -> jc, kx -> vv
+
+    let start = "rc".to_string();
+    let end = "dv".to_string();
+    let investig = ["bl", "fd", "hx"];
+
+    let mut done_in: Vec<usize> = Vec::new();
+
+    let idx = (1..20000).find(|&i| {
+        if (i % 1_000_000) == 0 {
+            println!("!! {}", i);
+        }
+        let mut q = VecDeque::from([QueueEntry {
+            pulse: false,
+            origin_module: "".to_string(),
+            module_name: start.clone(),
+        }]);
+        let mut was_good = false;
+        let mut last_sent_by_end: Option<bool> = None;
+        while let Some(entry) = q.pop_front() {
+            if entry.module_name == end {
+                let ModuleBehavior::Conjunction(cbv) = &modules[&end].behavior else {
+                    panic!()
+                };
+                if cbv.state.values().all(|&v| v) {
+                    let states = String::from_iter(investig.iter().map(|&i| {
+                        if modules[i].behavior.ff_state() {
+                            '!'
+                        } else {
+                            '.'
+                        }
+                    }));
+
+                    /*println!("{} {}", i, states);
+                    println!(
+                        "{}",
+                        String::from_iter(cbv.state.values().map(|&i| if i { '!' } else { '.' }))
+                    );
+                    println!(
+                        "{}",
+                        String::from_iter(modules.values().map(|m| {
+                            match m.behavior {
+                                ModuleBehavior::FlipFlop(_) => {
+                                    if m.behavior.ff_state() {
+                                        '!'
+                                    } else {
+                                        '.'
+                                    }
+                                }
+                                _ => '_',
+                            }
+                        }))
+                    );*/
+                    was_good = true;
+                    done_in.push(i);
+                }
             }
-            let mut q = VecDeque::from([QueueEntry {
-                pulse: false,
-                origin_module: "".to_string(),
-                module_name: "broadcaster".to_string(),
-            }]);
-            while let Some(entry) = q.pop_back() {
-                if entry.module_name == "dg" {
-                    let ModuleBehavior::Conjunction(cbv) = &modules[&entry.module_name].behavior
-                    else {
-                        panic!()
-                    };
-                    let diff = i - last;
-                    if *cbv.state.iter().nth(2).unwrap().1 {
-                        if diff != 3767 {
-                            println!("diff: {}", i - last);
-                        }
-                        last = i;
-                    } else {
-                        if diff > 3767 {
-                            println!(":(");
-                        }
-                    }
+            if entry.module_name == "rx" && !entry.pulse {
+                return true;
+            }
+            let module = modules.get_mut(&entry.module_name);
+            if module.is_none() {
+                continue;
+            }
+            let module = module.unwrap();
+            let p = module
+                .behavior
+                .process_pulse(&entry.origin_module, entry.pulse);
+
+            /*if entry.module_name == end && !p.unwrap() {
+                //println!("{}", i);
+                done_in.push(i);
+                /*let ModuleBehavior::Conjunction(cbv) = &modules[&entry.module_name].behavior
+                else {
+                    panic!()
+                };
+
+                if cbv.state.iter().filter(|(_, &v)| v).count() > 1 {
                     let s = String::from_iter(
                         cbv.state.iter().map(|(_, &v)| if v { '!' } else { '.' }),
                     );
-                    if i == 14401241 || s.chars().filter(|&c| c == '!').count() > 1 {
-                        println!("[{:9}] {}", i, s);
-                    }
-                    for (k, &v) in &cbv.state {
-                        if v {
-                            //println!("[{}] {} = True", i, k);
-                        } /*
-                                                  [3766] xt = True
-                          [3822] lk = True
-                          [3927] sp = True
-                          [3927] sp = True
-                          [4047] zv = True */
-                    }
-                }
-                if entry.module_name == "rx" && !entry.pulse {
-                    return true;
-                }
-                let module = modules.get_mut(&entry.module_name);
-                if module.is_none() {
-                    continue;
-                }
-                let module = module.unwrap();
-                let p = module
-                    .behavior
-                    .process_pulse(&entry.origin_module, entry.pulse);
+                    println!("[{:9}] {}", i, s);
+                }*/
+            }*/
 
-                if let Some(p) = p {
-                    for next_module in &module.next_modules {
-                        q.push_back(QueueEntry {
-                            pulse: p,
-                            origin_module: entry.module_name.clone(),
-                            module_name: next_module.clone(),
-                        });
-                    }
+            if let Some(p) = p {
+                if entry.module_name == end {
+                    last_sent_by_end = Some(p);
+                }
+                for next_module in &module.next_modules {
+                    q.push_back(QueueEntry {
+                        pulse: p,
+                        origin_module: entry.module_name.clone(),
+                        module_name: next_module.clone(),
+                    });
                 }
             }
+        }
 
-            false
-        })
-        .unwrap();
-    println!("{}", idx);
+        let ModuleBehavior::Conjunction(cbv) = &modules[&end].behavior else {
+            panic!()
+        };
+        /*if was_good {
+            println!("==> {:?}", last_sent_by_end);
+            println!(
+                "{}",
+                String::from_iter(cbv.state.values().map(|&i| if i { '!' } else { '.' }))
+            );
+            println!(
+                "{}",
+                String::from_iter(modules.values().map(|m| {
+                    match m.behavior {
+                        ModuleBehavior::FlipFlop(_) => {
+                            if m.behavior.ff_state() {
+                                '!'
+                            } else {
+                                '.'
+                            }
+                        }
+                        _ => '_',
+                    }
+                }))
+            );
+        }*/
+        if cbv.state.values().all(|&v| v) {
+            println!("&&&&&&&&&& {}", i);
+            done_in.push(i);
+        }
+
+        false
+    });
+
+    if idx.is_none() {
+        for (a, b) in done_in.iter().tuple_windows() {
+            println!("{:6} +{:6} -> {:6}", a, b - a, b);
+        }
+    }
 }
