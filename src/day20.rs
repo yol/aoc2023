@@ -4,7 +4,7 @@ use super::util::file_lines;
 use itertools::Itertools;
 
 trait ModBehaviorImpl {
-    fn process_pulse(&mut self, origin: usize, p: bool) -> Option<bool>;
+    fn process_pulse(&mut self, origin: &str, p: bool) -> Option<bool>;
 }
 
 #[derive(Debug)]
@@ -13,7 +13,7 @@ struct FlipFlopModule {
 }
 
 impl ModBehaviorImpl for FlipFlopModule {
-    fn process_pulse(&mut self, _origin: usize, p: bool) -> Option<bool> {
+    fn process_pulse(&mut self, _origin: &str, p: bool) -> Option<bool> {
         if !p {
             self.state = !self.state;
             Some(self.state)
@@ -39,31 +39,31 @@ impl BroadcasterModule {
 }
 
 impl ModBehaviorImpl for BroadcasterModule {
-    fn process_pulse(&mut self, _origin: usize, p: bool) -> Option<bool> {
+    fn process_pulse(&mut self, _origin: &str, p: bool) -> Option<bool> {
         Some(p)
     }
 }
 
 #[derive(Debug)]
 struct ConjunctionModule {
-    state: BTreeMap<usize, bool>,
+    state: BTreeMap<String, bool>,
 }
 
 impl ConjunctionModule {
     fn new() -> ConjunctionModule {
         ConjunctionModule {
-            state: BTreeMap::<usize, bool>::new(),
+            state: BTreeMap::<String, bool>::new(),
         }
     }
 
-    fn add_pre(&mut self, pre: usize) {
-        self.state.insert(pre, false);
+    fn add_pre(&mut self, pre: &str) {
+        self.state.insert(pre.to_string(), false);
     }
 }
 
 impl ModBehaviorImpl for ConjunctionModule {
-    fn process_pulse(&mut self, origin: usize, p: bool) -> Option<bool> {
-        let inp_state = self.state.get_mut(&origin);
+    fn process_pulse(&mut self, origin: &str, p: bool) -> Option<bool> {
+        let inp_state = self.state.get_mut(origin);
         *inp_state.unwrap() = p;
         Some(!self.state.iter().all(|(_, &v)| v))
     }
@@ -77,7 +77,7 @@ enum ModuleBehavior {
 }
 
 impl ModBehaviorImpl for ModuleBehavior {
-    fn process_pulse(&mut self, origin: usize, p: bool) -> Option<bool> {
+    fn process_pulse(&mut self, origin: &str, p: bool) -> Option<bool> {
         // FIXME not so nice
         match self {
             Self::Broadcaster(x) => x.process_pulse(origin, p),
@@ -89,7 +89,7 @@ impl ModBehaviorImpl for ModuleBehavior {
 
 #[derive(Debug)]
 struct Module {
-    next_modules: Vec<usize>,
+    next_modules: Vec<String>,
     // FIXME dynamic dispatch? enum dispatch?
     behavior: ModuleBehavior,
 }
@@ -201,34 +201,8 @@ pub fn part1() {
 pub fn part2() {
     let lines = file_lines("inp20_2.txt");
 
-    /*let mut n1 = 1_u64;
-    let mut n2 = 1_u64;
-    let mut n3 = 1_u64;
-    loop {
-        let r1 = n1 * 14401241;
-        let r2 = 3928 + n2 * 3726;
-        let mut r3 = 4048 + n3 * 4006;
-        if r1 == r2 {
-            println!("n1: {}, n2: {}  ==> {}", n1, n2, r1);
-            while r3 < r1 {
-                n3 += 1;
-                r3 += 4006;
-            }
-            if r3 == r1 {
-                println!("n1: {}, n2: {}, n3: {}  ==> {}", n1, n2, n3, r1);
-                return;
-            }
-        }
-        if r1 > r2 {
-            n2 += 1;
-        } else {
-            n1 += 1;
-        }
-    }*/
-
-    type ModuleMap = Vec<Module>;
+    type ModuleMap = BTreeMap<String, Module>;
     let mut modules = ModuleMap::new();
-    let mut name_map = BTreeMap<String, usize>;
     for line in &lines {
         let parts = line.split_whitespace().collect_vec();
         let behavior = &parts[0][0..1];
@@ -292,7 +266,6 @@ pub fn part2() {
 
     // 259356131034 too low
     // 28623445771888 too low#
-    // 10028476985242
 
     // 1st: 3823 ...+3823 ...
     // 2nd: 3928 x2 + 3726 -> 7690 x2 +3726 -> 11452
@@ -304,7 +277,7 @@ pub fn part2() {
     let mut last = 0;
     let idx = (1..)
         .find(|&i| {
-            if (i % 1_000_000) == 0 {
+            if (i % 100_000) == 0 {
                 println!("!! {}", i);
             }
             let mut q = VecDeque::from([QueueEntry {
@@ -318,7 +291,7 @@ pub fn part2() {
                     else {
                         panic!()
                     };
-                    /*let diff = i - last;
+                    let diff = i - last;
                     if *cbv.state.iter().nth(2).unwrap().1 {
                         if diff != 3767 {
                             println!("diff: {}", i - last);
@@ -328,13 +301,22 @@ pub fn part2() {
                         if diff > 3767 {
                             println!(":(");
                         }
-                    }*/
-
-                    if cbv.state.iter().filter(|(_, &v)| v).count() > 1 {
-                        let s = String::from_iter(
-                            cbv.state.iter().map(|(_, &v)| if v { '!' } else { '.' }),
-                        );
+                    }
+                    let s = String::from_iter(
+                        cbv.state.iter().map(|(_, &v)| if v { '!' } else { '.' }),
+                    );
+                    if i == 14401241 || s.chars().filter(|&c| c == '!').count() > 1 {
                         println!("[{:9}] {}", i, s);
+                    }
+                    for (k, &v) in &cbv.state {
+                        if v {
+                            //println!("[{}] {} = True", i, k);
+                        } /*
+                                                  [3766] xt = True
+                          [3822] lk = True
+                          [3927] sp = True
+                          [3927] sp = True
+                          [4047] zv = True */
                     }
                 }
                 if entry.module_name == "rx" && !entry.pulse {
