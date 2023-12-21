@@ -177,6 +177,13 @@ impl Position {
     pub fn manhattan_distance_to(self, other: Position) -> usize {
         (other.x - self.x).abs() as usize + (other.y - self.y).abs() as usize
     }
+
+    pub fn from_grid_pos(p: (usize, usize)) -> Position {
+        Position {
+            x: p.1 as isize,
+            y: p.0 as isize,
+        }
+    }
 }
 
 impl Debug for Position {
