@@ -1,8 +1,7 @@
-use core::panic;
+use std::{collections::BTreeSet, mem::swap};
 
-use crate::util::{build_grid, Direction, Position};
+use crate::util::{build_grid, file_lines, Direction, Position};
 
-use super::util::file_lines;
 use itertools::Itertools;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -45,20 +44,20 @@ pub fn part1() {
             .0,
     );
 
-    let mut plots = vec![start_pos];
+    let mut plots: BTreeSet<Position> = vec![start_pos].into_iter().collect();
     const WALK_MAX: usize = 64;
     for _i in 0..WALK_MAX {
-        let mut next_plots = Vec::new();
-        for pos in plots {
+        let mut next_plots = BTreeSet::<Position>::new();
+        for pos in &plots {
             for dir in Direction::all() {
                 if let Some(next_pos) = pos.advance_in_grid(dir, &grid) {
                     if grid[next_pos.as_grid_pos()].tile_type != TileType::Rock {
-                        next_plots.push(next_pos);
+                        next_plots.insert(next_pos);
                     }
                 }
             }
         }
-        plots = next_plots.iter().unique().cloned().collect_vec();
+        swap(&mut next_plots, &mut plots);
     }
 
     let reached = plots.len();

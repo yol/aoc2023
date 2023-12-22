@@ -121,7 +121,7 @@ impl Debug for Direction {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
 pub struct Position {
     pub x: isize,
     pub y: isize,
