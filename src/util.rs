@@ -17,8 +17,8 @@ where
     T: FromStr,
     <T as FromStr>::Err: Debug,
 {
-    s.split(|c| c == ',' || c == ' ')
-        .map(|p| p.parse::<T>().unwrap())
+    s.split(|c| c == ',')
+        .map(|p| p.trim().parse::<T>().unwrap())
         .collect_vec()
 }
 

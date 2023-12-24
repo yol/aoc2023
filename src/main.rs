@@ -1480,8 +1480,9 @@ mod day20;
 mod day21;
 mod day22;
 mod day23;
+mod day24;
 mod util;
 
 fn main() {
-    day23::part2();
+    day24::part1();
 }
