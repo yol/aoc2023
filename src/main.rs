@@ -1478,6 +1478,5 @@ mod day24;
 mod util;
 
 fn main() {
-    // 23738616
-    day5_2();
+    day20::part2();
 }

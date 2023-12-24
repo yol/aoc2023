@@ -12,6 +12,7 @@ struct FlipFlopModule {
     state: bool,
 }
 
+// TODO use dynamic dispatch?
 impl ModBehaviorImpl for FlipFlopModule {
     fn process_pulse(&mut self, _origin: &str, p: bool) -> Option<bool> {
         if !p {
@@ -213,39 +214,6 @@ pub fn part1() {
 pub fn part2() {
     let lines = file_lines("inp20_2.txt");
 
-    /*let mut n1 = 1_u64;
-    let mut n2 = 1_u64;
-    let mut n3 = 1_u64;
-
-    const LCMFAC1: u64 = 4051;
-    const LCMFAC2: u64 = 3929;
-    const LINOFF1: u64 = 3760;
-    const LINSCALE1: u64 = 3438;
-    const LINOFF2: u64 = 3820;
-    const LINSCALE2: u64 = 3550;
-
-    loop {
-        let r1 = n1 * LCMFAC1 * LCMFAC2;
-        let r2 = LINOFF1 + n2 * LINSCALE1;
-        let mut r3 = LINOFF2 + n3 * LINSCALE2;
-        if r1 == r2 {
-            println!("n1: {}, n2: {}  ==> {}", n1, n2, r1);
-            while r3 < r1 {
-                n3 += 1;
-                r3 += LINSCALE2;
-            }
-            if r3 == r1 {
-                println!("n1: {}, n2: {}, n3: {}  ==> {}", n1, n2, n3, r1);
-                return;
-            }
-        }
-        if r1 > r2 {
-            n2 += 1;
-        } else {
-            n1 += 1;
-        }
-    }*/
-
     type ModuleMap = BTreeMap<String, Module>;
     let mut modules = ModuleMap::new();
     for line in &lines {
@@ -320,60 +288,36 @@ pub fn part2() {
         module_name: String,
     }
 
-    // rc -> dv:    0 + n * 3767
-    // nt -> xq:    0 + n * 3929
-    // mg -> jc:    0 + n * 3823
-    // kx -> vv:    0 + n * 4051
-    // lcm 229215609826339: correct
+    let end_module = modules
+        .iter()
+        .find(|m| m.1.next_modules.contains(&"rx".to_string()))
+        .unwrap()
+        .0
+        .clone();
+    let ModuleBehavior::Conjunction(cbv) = &modules[&end_module].behavior else {
+        panic!()
+    };
+    let mut done_in: Vec<Option<usize>> = vec![None; cbv.state.len()];
 
-    // independent subunits:
-    // rc -> dv, nt -> xq, mg -> jc, kx -> vv
-
-    let start = "rc".to_string();
-    let end = "dv".to_string();
-
-    let mut done_in: Vec<usize> = Vec::new();
-
-    let idx = (1..20000).find(|&i| {
-        if (i % 1_000_000) == 0 {
-            println!("!! {}", i);
-        }
+    'outer: for i in 1.. {
         let mut q = VecDeque::from([QueueEntry {
             pulse: false,
             origin_module: "".to_string(),
-            module_name: start.clone(),
+            module_name: "broadcaster".to_string(),
         }]);
         while let Some(entry) = q.pop_front() {
-            if entry.module_name == end {
-                let ModuleBehavior::Conjunction(cbv) = &modules[&end].behavior else {
+            if entry.module_name == end_module {
+                let ModuleBehavior::Conjunction(cbv) = &modules[&entry.module_name].behavior else {
                     panic!()
                 };
-                if cbv.state.values().all(|&v| v) {
-                    /*println!("{} {}", i, states);
-                    println!(
-                        "{}",
-                        String::from_iter(cbv.state.values().map(|&i| if i { '!' } else { '.' }))
-                    );
-                    println!(
-                        "{}",
-                        String::from_iter(modules.values().map(|m| {
-                            match m.behavior {
-                                ModuleBehavior::FlipFlop(_) => {
-                                    if m.behavior.ff_state() {
-                                        '!'
-                                    } else {
-                                        '.'
-                                    }
-                                }
-                                _ => '_',
-                            }
-                        }))
-                    );*/
-                    done_in.push(i);
+                for (state_idx, &state) in cbv.state.values().enumerate() {
+                    if state {
+                        done_in[state_idx].get_or_insert(i);
+                    }
                 }
-            }
-            if entry.module_name == "rx" && !entry.pulse {
-                return true;
+                if done_in.iter().all(|v| v.is_some()) {
+                    break 'outer;
+                }
             }
             let module = modules.get_mut(&entry.module_name);
             if module.is_none() {
@@ -394,21 +338,12 @@ pub fn part2() {
                 }
             }
         }
-
-        let ModuleBehavior::Conjunction(cbv) = &modules[&end].behavior else {
-            panic!()
-        };
-        if cbv.state.values().all(|&v| v) {
-            println!("&&&&&&&&&& {}", i);
-            done_in.push(i);
-        }
-
-        false
-    });
-
-    if idx.is_none() {
-        for (a, b) in done_in.iter().tuple_windows() {
-            println!("{:6} +{:6} -> {:6}", a, b - a, b);
-        }
     }
+
+    println!("{:?}", done_in);
+
+    let lcm = done_in
+        .iter()
+        .fold(1_usize, |acc, n| num::Integer::lcm(&acc, &n.unwrap()));
+    println!("{}", lcm);
 }
