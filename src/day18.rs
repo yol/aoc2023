@@ -1,7 +1,6 @@
 use std::{
     cmp::{max, min},
-    collections::{LinkedList, VecDeque},
-    mem::swap,
+    collections::VecDeque,
 };
 
 use super::util::{file_lines, print_grid, Direction, Position};
@@ -188,7 +187,6 @@ pub fn part2() {
     }
 
     fn print_poly(poly: &Polygon) {
-        return;
         const SIZE: usize = 20;
         const OFFSET: usize = 2;
 
@@ -205,7 +203,7 @@ pub fn part2() {
 
         print_grid(&grid, |&c| c);
     }
-    print_poly(&poly);
+    //print_poly(&poly);
 
     let mut area_correct: i64 = 0;
 
@@ -236,7 +234,7 @@ pub fn part2() {
                                 index, l1, l2, l3, l4
                             );
 
-                            let mut new_seg = LineSeg::new_from_pos(l1.a, new_end);
+                            let new_seg = LineSeg::new_from_pos(l1.a, new_end);
 
                             // Check rotation direction to see if the simplification is cutting away from
                             // inside or outside the polygon
@@ -310,7 +308,7 @@ pub fn part2() {
                     }
                 }
             }
-            print_poly(&poly);
+            //print_poly(&poly);
 
             let mut merged = true;
             while merged {

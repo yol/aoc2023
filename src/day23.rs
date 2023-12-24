@@ -356,7 +356,7 @@ pub fn part2() {
 
     let res = dijkstra(
         &SearchState2 {
-            node: 0,
+            node: start_node,
             visited: BTreeSet::new(),
         },
         |s| {
@@ -387,36 +387,6 @@ pub fn part2() {
         .0
         .iter()
         .filter(|e| e.0.node == end_node)
-        .map(|s| s.1 .1)
-        .max()
-        .unwrap();
-    println!("{}", cost);
-
-    return;
-
-    let res = dijkstra(
-        &SearchState {
-            pos: start_pos,
-            dir: None,
-            covered: BTreeSet::from([start_pos]),
-        },
-        |s| {
-            Direction::all()
-                .filter_map(|new_dir| {
-                    /* if s.dir.is_some() && new_dir == s.dir.unwrap().opposite() {
-                        // Never go back
-                        return None;
-                    }*/
-                    s.advance_in_grid_with_dir(&grid, new_dir)
-                })
-                .collect_vec()
-        },
-        |_| false, //|s| s.pos.y == (grid.rows() - 1) as isize,
-    );
-    let cost = res
-        .0
-        .iter()
-        .filter(|e| e.0.pos.y == (grid.rows() - 1) as isize)
         .map(|s| s.1 .1)
         .max()
         .unwrap();

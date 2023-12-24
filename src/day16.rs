@@ -27,9 +27,9 @@ impl From<char> for TileType {
         }
     }
 }
-impl Into<char> for TileType {
-    fn into(self) -> char {
-        self as u8 as char
+impl From<TileType> for char {
+    fn from(val: TileType) -> Self {
+        val as u8 as char
     }
 }
 
@@ -92,10 +92,7 @@ pub fn part1() {
 
         let mut try_push = |dir| {
             if let Some(next_pos) = pos.advance_in_grid(dir, &grid) {
-                q.push_back(QueueEntry {
-                    pos: next_pos,
-                    dir: dir,
-                });
+                q.push_back(QueueEntry { pos: next_pos, dir });
             }
         };
 
@@ -199,15 +196,12 @@ pub fn part2() {
             let grid_tile = &grid[entry.pos.as_grid_pos()];
 
             let mut try_push = |dir| {
-                if let Some(next_pos) = pos.advance_in_grid(dir, &grid) {
+                if let Some(next_pos) = pos.advance_in_grid(dir, grid) {
                     if grid[next_pos.as_grid_pos()].energized_dir[dir as usize] {
                         // Already visited in this direction
                         return;
                     }
-                    q.push_back(QueueEntry {
-                        pos: next_pos,
-                        dir: dir,
-                    });
+                    q.push_back(QueueEntry { pos: next_pos, dir });
                 }
             };
 

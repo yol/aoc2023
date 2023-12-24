@@ -51,7 +51,7 @@ pub fn part1() {
                     })
                 });
                 println!("- {:?}", reflection_line);
-                reflection_line.and_then(|l| Some(l + 1))
+                reflection_line.map(|l| l + 1)
             }
 
             sum += match find_reflection(&grid) {
@@ -127,7 +127,7 @@ pub fn part2() {
             let mut orig_reflection_line: Option<usize> = None;
             if y_reflections.len() == 1 {
                 orig_reflection_line = Some(y_reflections[0] * 100);
-            } else if y_reflections.len() == 0 {
+            } else if y_reflections.is_empty() {
                 println!("transpose");
                 let mut transp_grid = grid.clone();
                 transp_grid.transpose();

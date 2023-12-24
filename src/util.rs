@@ -34,7 +34,7 @@ pub fn parse_digit(c: char) -> u8 {
     c.to_digit(10).unwrap() as u8
 }
 
-pub fn build_grid<T, F>(lines: &Vec<String>, map_fn: F) -> Grid<T>
+pub fn build_grid<T, F>(lines: &[String], map_fn: F) -> Grid<T>
 where
     F: Fn(char) -> T,
 {
@@ -183,7 +183,7 @@ impl Position {
     }
 
     pub fn manhattan_distance_to(self, other: Position) -> usize {
-        (other.x - self.x).abs() as usize + (other.y - self.y).abs() as usize
+        (other.x - self.x).unsigned_abs() + (other.y - self.y).unsigned_abs()
     }
 
     pub fn from_grid_pos(p: (usize, usize)) -> Position {

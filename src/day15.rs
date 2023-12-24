@@ -30,14 +30,14 @@ pub fn part2() {
     let mut boxes = vec![Vec::<Slot>::new(); 256];
 
     for instr in instructions {
-        fn get_box<'a>(boxes: &'a mut Vec<Vec<Slot>>, label: &str) -> &'a mut Vec<Slot> {
+        fn get_box<'a>(boxes: &'a mut [Vec<Slot>], label: &str) -> &'a mut Vec<Slot> {
             &mut boxes[hash(label) as usize]
         }
-        fn find_lens<'a>(tbox: &'a mut Vec<Slot>, label: &str) -> Option<(usize, &'a mut Slot)> {
+        fn find_lens<'a>(tbox: &'a mut [Slot], label: &str) -> Option<(usize, &'a mut Slot)> {
             tbox.iter_mut().find_position(|s| s.lens_label == label)
         }
 
-        if instr.chars().last().unwrap() == '-' {
+        if instr.ends_with('-') {
             let lens_label = &instr[0..instr.chars().count() - 1];
             let tbox = get_box(&mut boxes, lens_label);
             if let Some(entry) = find_lens(tbox, lens_label) {

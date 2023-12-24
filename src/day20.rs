@@ -281,7 +281,6 @@ pub fn part2() {
             _ => panic!(),
         };
     }
-    //println!("{:?}", modules);
 
     let module_names = modules.keys().cloned().collect_vec();
     for module_name in module_names {
@@ -300,8 +299,6 @@ pub fn part2() {
         }
     }
 
-    // println!("{:?}", modules);
-
     println!("digraph {{");
 
     for module in &modules {
@@ -317,26 +314,11 @@ pub fn part2() {
     }
     println!("}}");
 
-    //return;
-
     struct QueueEntry {
         pulse: bool,
         origin_module: String,
         module_name: String,
     }
-
-    // 259356131034 too low
-    // 28623445771888 too low
-    // 27162814304704 (too low)
-    // 64377328301638 wrong
-    // 229215609826339
-
-    // rc -> dv: 3760 + n * 3438
-    // nt -> xq:    0 + n * 3929
-    // mg -> jc: 3820 + n * 3550
-    // kx -> vv:    0 + n * 4051
-    // lcm(4051,3929) -> 15916379
-    // --> 47468690402020: wrong
 
     // rc -> dv:    0 + n * 3767
     // nt -> xq:    0 + n * 3929
@@ -349,7 +331,6 @@ pub fn part2() {
 
     let start = "rc".to_string();
     let end = "dv".to_string();
-    let investig = ["bl", "fd", "hx"];
 
     let mut done_in: Vec<usize> = Vec::new();
 
@@ -362,22 +343,12 @@ pub fn part2() {
             origin_module: "".to_string(),
             module_name: start.clone(),
         }]);
-        let mut was_good = false;
-        let mut last_sent_by_end: Option<bool> = None;
         while let Some(entry) = q.pop_front() {
             if entry.module_name == end {
                 let ModuleBehavior::Conjunction(cbv) = &modules[&end].behavior else {
                     panic!()
                 };
                 if cbv.state.values().all(|&v| v) {
-                    let states = String::from_iter(investig.iter().map(|&i| {
-                        if modules[i].behavior.ff_state() {
-                            '!'
-                        } else {
-                            '.'
-                        }
-                    }));
-
                     /*println!("{} {}", i, states);
                     println!(
                         "{}",
@@ -398,7 +369,6 @@ pub fn part2() {
                             }
                         }))
                     );*/
-                    was_good = true;
                     done_in.push(i);
                 }
             }
@@ -414,26 +384,7 @@ pub fn part2() {
                 .behavior
                 .process_pulse(&entry.origin_module, entry.pulse);
 
-            /*if entry.module_name == end && !p.unwrap() {
-                //println!("{}", i);
-                done_in.push(i);
-                /*let ModuleBehavior::Conjunction(cbv) = &modules[&entry.module_name].behavior
-                else {
-                    panic!()
-                };
-
-                if cbv.state.iter().filter(|(_, &v)| v).count() > 1 {
-                    let s = String::from_iter(
-                        cbv.state.iter().map(|(_, &v)| if v { '!' } else { '.' }),
-                    );
-                    println!("[{:9}] {}", i, s);
-                }*/
-            }*/
-
             if let Some(p) = p {
-                if entry.module_name == end {
-                    last_sent_by_end = Some(p);
-                }
                 for next_module in &module.next_modules {
                     q.push_back(QueueEntry {
                         pulse: p,
@@ -447,28 +398,6 @@ pub fn part2() {
         let ModuleBehavior::Conjunction(cbv) = &modules[&end].behavior else {
             panic!()
         };
-        /*if was_good {
-            println!("==> {:?}", last_sent_by_end);
-            println!(
-                "{}",
-                String::from_iter(cbv.state.values().map(|&i| if i { '!' } else { '.' }))
-            );
-            println!(
-                "{}",
-                String::from_iter(modules.values().map(|m| {
-                    match m.behavior {
-                        ModuleBehavior::FlipFlop(_) => {
-                            if m.behavior.ff_state() {
-                                '!'
-                            } else {
-                                '.'
-                            }
-                        }
-                        _ => '_',
-                    }
-                }))
-            );
-        }*/
         if cbv.state.values().all(|&v| v) {
             println!("&&&&&&&&&& {}", i);
             done_in.push(i);

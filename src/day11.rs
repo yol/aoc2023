@@ -35,7 +35,7 @@ pub fn part1() {
     let mut galaxies = Vec::new();
     for (y, row) in grid.iter_rows().enumerate() {
         for (x, &col) in row.enumerate() {
-            if col == true {
+            if col {
                 galaxies.push((x as i64, y as i64));
             }
         }
@@ -43,10 +43,10 @@ pub fn part1() {
     println!("{:?}", galaxies);
 
     let empty_rows: Vec<usize> = (0..grid.rows())
-        .filter(|&y| grid.iter_row(y).all(|&c| c == false))
+        .filter(|&y| grid.iter_row(y).all(|&c| !c))
         .collect();
     let empty_cols: Vec<usize> = (0..grid.cols())
-        .filter(|&x| grid.iter_col(x).all(|&c| c == false))
+        .filter(|&x| grid.iter_col(x).all(|&c| !c))
         .collect();
     for galaxy in &mut galaxies {
         galaxy.0 += empty_cols
@@ -102,7 +102,7 @@ pub fn part2() {
     let mut galaxies = Vec::new();
     for (y, row) in grid.iter_rows().enumerate() {
         for (x, &col) in row.enumerate() {
-            if col == true {
+            if col {
                 galaxies.push((x as i64, y as i64));
             }
         }
@@ -110,10 +110,10 @@ pub fn part2() {
     println!("{:?}", galaxies);
 
     let empty_rows: Vec<usize> = (0..grid.rows())
-        .filter(|&y| grid.iter_row(y).all(|&c| c == false))
+        .filter(|&y| grid.iter_row(y).all(|&c| !c))
         .collect();
     let empty_cols: Vec<usize> = (0..grid.cols())
-        .filter(|&x| grid.iter_col(x).all(|&c| c == false))
+        .filter(|&x| grid.iter_col(x).all(|&c| !c))
         .collect();
     for galaxy in &mut galaxies {
         const EXPANSION: i64 = 999_999;
@@ -136,8 +136,8 @@ pub fn part2() {
         .map(|galaxies| {
             let &a = galaxies[0];
             let &b = galaxies[1];
-            let dist = (b.0 - a.0).abs() + (b.1 - a.1).abs();
-            dist
+
+            (b.0 - a.0).abs() + (b.1 - a.1).abs()
         })
         .sum();
 

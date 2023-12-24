@@ -111,8 +111,8 @@ impl Part {
     }
 }
 
-fn parse(lines: &Vec<String>) -> (HashMap<String, Vec<Instruction>>, Vec<Part>) {
-    let (instructions_s, parts_s) = lines.split_once(|l| l == "").unwrap();
+fn parse(lines: &[String]) -> (HashMap<String, Vec<Instruction>>, Vec<Part>) {
+    let (instructions_s, parts_s) = lines.split_once(|l| l.is_empty()).unwrap();
 
     let re = Regex::new(r"^([xmas])([><])(\d+):(\w+)$").unwrap();
 
@@ -131,10 +131,10 @@ fn parse(lines: &Vec<String>) -> (HashMap<String, Vec<Instruction>>, Vec<Part>) 
                         None => Instruction::Judge(Verdict::from_str(i)),
                         Some(full_match) => Instruction::Compare(ComparisonInstruction {
                             tag: ValueTag::from_char(
-                                full_match.get(1).unwrap().as_str().chars().nth(0).unwrap(),
+                                full_match.get(1).unwrap().as_str().chars().next().unwrap(),
                             ),
                             op: Operator::from_char(
-                                full_match.get(2).unwrap().as_str().chars().nth(0).unwrap(),
+                                full_match.get(2).unwrap().as_str().chars().next().unwrap(),
                             ),
                             value: full_match.get(3).unwrap().as_str().parse().unwrap(),
                             verdict: Verdict::from_str(full_match.get(4).unwrap().as_str()),
@@ -286,7 +286,7 @@ pub fn part2() {
                     },
                 );
                 if let Some(new_tag_range_match) = new_tag_range_match {
-                    let mut new_part_range = entry.part_range.clone();
+                    let mut new_part_range = entry.part_range;
                     *new_part_range.get_tagged_mut(c.tag) = new_tag_range_match;
                     match &c.verdict {
                         Verdict::Accept => accepted_part_ranges.push(new_part_range),
@@ -309,7 +309,7 @@ pub fn part2() {
                     },
                 );
                 if let Some(new_tag_range_mismatch) = new_tag_range_mismatch {
-                    let mut new_part_range = entry.part_range.clone();
+                    let mut new_part_range = entry.part_range;
                     *new_part_range.get_tagged_mut(c.tag) = new_tag_range_mismatch;
                     q.push_back(QueueEntry {
                         workflow_name: entry.workflow_name.clone(),

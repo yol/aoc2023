@@ -10,7 +10,7 @@ use std::path::Path;
 use std::str;
 
 fn numeral_to_int(c: &str) -> i64 {
-    return match c {
+    match c {
         "1" | "one" => 1,
         "2" | "two" => 2,
         "3" | "three" => 3,
@@ -21,12 +21,12 @@ fn numeral_to_int(c: &str) -> i64 {
         "8" | "eight" => 8,
         "9" | "nine" => 9,
         _ => panic!(),
-    };
+    }
 }
 
 fn day1() {
     let path = Path::new("inp2.txt");
-    let file = match File::open(&path) {
+    let file = match File::open(path) {
         Err(why) => panic!("{}", why),
         Ok(file) => file,
     };
@@ -42,8 +42,7 @@ fn day1() {
                 Some(x) => x,
             };
         }
-        let res = 10 * numeral_to_int(p1.as_str()) + numeral_to_int(p2.as_str());
-        return res;
+        10 * numeral_to_int(p1.as_str()) + numeral_to_int(p2.as_str())
     });
     let sum: i64 = calib_vals.sum();
     println!("sum: {}", sum);
@@ -57,19 +56,19 @@ fn day2() {
         .map(|l| {
             let line = l.unwrap();
 
-            let mut game_split = line.split(":");
+            let mut game_split = line.split(':');
             let game_id_str = game_split.next().unwrap();
             let game_content_str = game_split.next().unwrap();
 
             let game_id: i64 = game_id_str[5..].parse().unwrap();
 
             let contents: Vec<[i64; 3]> = game_content_str
-                .split(";")
+                .split(';')
                 .map(|round| {
-                    let round_contents_str = round.split(",");
+                    let round_contents_str = round.split(',');
                     let mut round_contents = [0, 0, 0];
                     round_contents_str.for_each(|e| {
-                        let mut p = e.trim().split(" ");
+                        let mut p = e.trim().split(' ');
                         let count: i64 = p.next().unwrap().parse().unwrap();
                         let index = match p.next().unwrap() {
                             "red" => 0,
@@ -79,10 +78,10 @@ fn day2() {
                         };
                         round_contents[index] += count;
                     });
-                    return round_contents;
+                    round_contents
                 })
                 .collect();
-            return (game_id, contents);
+            (game_id, contents)
         })
         .collect();
 
@@ -94,7 +93,7 @@ fn day2() {
             .iter()
             .all(|round| round[0] <= limits[0] && round[1] <= limits[1] && round[2] <= limits[2]);
 
-        return possible;
+        possible
     });
 
     let sum_ok_games: i64 = ok_games.map(|g| g.0).sum();
@@ -109,7 +108,7 @@ fn day2() {
             }
         }
         let power: i64 = minimum_cubes.iter().product();
-        return power;
+        power
     });
     let sum_power: i64 = power_per_game.sum();
     println!("{}", sum_power);
@@ -131,18 +130,18 @@ fn day3_1() {
 
     for (line_no, line) in grid.iter().enumerate() {
         num_re
-            .find_iter(str::from_utf8(&line).unwrap())
+            .find_iter(str::from_utf8(line).unwrap())
             .for_each(|num_match| {
                 let part_no: i64 = num_match.as_str().parse().unwrap();
                 let start = num_match.start().saturating_sub(1);
                 let end = min(line.len(), num_match.end() + 1);
 
                 fn is_symbol(c: char) -> bool {
-                    return c != '.' && !c.is_numeric();
+                    c != '.' && !c.is_numeric()
                 }
 
                 fn has_symbol(s: &[u8]) -> bool {
-                    return str::from_utf8(&s).unwrap().find(is_symbol).is_some();
+                    return str::from_utf8(s).unwrap().find(is_symbol).is_some();
                 }
 
                 let mut adj_symbol = false;
@@ -197,7 +196,7 @@ fn day3_2() {
 
     for (line_no, line) in grid.iter().enumerate() {
         num_re
-            .find_iter(str::from_utf8(&line).unwrap())
+            .find_iter(str::from_utf8(line).unwrap())
             .for_each(|num_match| {
                 let part_no: i64 = num_match.as_str().parse().unwrap();
                 let start = num_match.start().saturating_sub(1);
@@ -205,16 +204,16 @@ fn day3_2() {
 
                 fn is_symbol(c: char) -> bool {
                     //return c != '.' && !c.is_numeric();
-                    return c == '*';
+                    c == '*'
                 }
 
                 fn has_symbol(s: &[u8]) -> Option<usize> {
-                    return str::from_utf8(&s).unwrap().find(is_symbol);
+                    return str::from_utf8(s).unwrap().find(is_symbol);
                 }
 
                 fn find_symbol(
                     line_no: usize,
-                    grid: &Vec<Vec<u8>>,
+                    grid: &[Vec<u8>],
                     start: usize,
                     end: usize,
                 ) -> Option<(usize, usize)> {
@@ -222,8 +221,8 @@ fn day3_2() {
                     if line_no > 0 {
                         let line_above = &grid[line_no - 1][start..end];
                         let sym_pos = has_symbol(line_above);
-                        if sym_pos.is_some() {
-                            return Some((line_no - 1, start + sym_pos.unwrap()));
+                        if let Some(sym_pos) = sym_pos {
+                            return Some((line_no - 1, start + sym_pos));
                         }
                     }
 
@@ -237,17 +236,17 @@ fn day3_2() {
                     if line_no < (grid.len() - 1) {
                         let line_below = &grid[line_no + 1][start..end];
                         let sym_pos = has_symbol(line_below);
-                        if sym_pos.is_some() {
-                            return Some((line_no + 1, start + sym_pos.unwrap()));
+                        if let Some(sym_pos) = sym_pos {
+                            return Some((line_no + 1, start + sym_pos));
                         }
                     }
 
-                    return None;
+                    None
                 }
 
                 let sym_pos = find_symbol(line_no, &grid, start, end);
 
-                if !sym_pos.is_some() {
+                if sym_pos.is_none() {
                     return;
                 }
 
@@ -305,12 +304,12 @@ fn day4_1() {
 
             let winning_on_card = card_nos.intersection(&winning_nos);
             let winning_count = winning_on_card.count();
-            let card_val = if winning_count == 0 {
+
+            if winning_count == 0 {
                 0
             } else {
-                (2 as i64).pow((winning_count as u32) - 1)
-            };
-            return card_val;
+                2_i64.pow((winning_count as u32) - 1)
+            }
         })
         .sum();
 
@@ -425,7 +424,7 @@ fn day5_1() {
 
     let min_loc = seeds
         .iter()
-        .map(|seed| {
+        .filter_map(|seed| {
             let mut cur_type = "seed".to_string();
             let mut cur_no = *seed;
 
@@ -451,8 +450,6 @@ fn day5_1() {
                 }
             }
         })
-        .filter(|l| l.is_some())
-        .map(|o| o.unwrap())
         .min()
         .unwrap();
 
@@ -474,12 +471,13 @@ fn day5_2() {
             assert!(self.length >= 0);
         }
         fn is_empty(&self) -> bool {
-            return self.length == 0;
+            self.length == 0
+        }
+        fn end(&self) -> i64 {
+            self.start + self.length - 1
         }
         fn overlaps(&self, other: &Range) -> bool {
-            return (self.start >= other.start && self.start < other.start + other.length)
-                || (self.start + self.length >= other.start
-                    && self.start + self.length < other.start);
+            (self.start <= other.end()) && (other.start <= self.end())
         }
     }
 
@@ -536,11 +534,10 @@ fn day5_2() {
 
     let loc_ranges = seeds.chunks_exact(2).flat_map(|seed| {
         let mut cur_type = "seed".to_string();
-        let mut cur_ranges: Vec<Range> = Vec::new();
-        cur_ranges.push(Range {
+        let mut cur_ranges = vec![Range {
             start: seed[0],
             length: seed[1],
-        });
+        }];
 
         loop {
             let next_map = maps.iter().find(|m| m.source_type == cur_type).unwrap();
@@ -609,7 +606,7 @@ fn day5_2() {
             }
         }
 
-        return cur_ranges;
+        cur_ranges
     });
 
     let min_loc = loc_ranges.map(|r| r.start).min().unwrap();
@@ -625,7 +622,7 @@ fn day6_1() {
         .next()
         .unwrap()
         .unwrap()
-        .replace(" ", "")
+        .replace(' ', "")
         .split(':')
         .skip(1)
         .map(|t| t.parse::<i64>().unwrap())
@@ -635,7 +632,7 @@ fn day6_1() {
         .next()
         .unwrap()
         .unwrap()
-        .replace(" ", "")
+        .replace(' ', "")
         .split(':')
         .skip(1)
         .map(|t| t.parse::<i64>().unwrap())
@@ -650,14 +647,13 @@ fn day6_1() {
             .map(|charge_time| {
                 let travel_time = time - charge_time;
                 let speed = charge_time;
-                let d = speed * travel_time;
-                //println!("     {}", d);
-                return d;
+
+                speed * travel_time
             })
             .filter(|d| *d > best_distance);
         let no_win_distances = win_distances.count();
         //println!("- {}", no_win_distances);
-        return no_win_distances as i64;
+        no_win_distances as i64
     });
 
     let solution: i64 = ways_to_win_per_race.product();
@@ -672,7 +668,7 @@ fn day6_2() {
         .next()
         .unwrap()
         .unwrap()
-        .replace(" ", "")
+        .replace(' ', "")
         .split(':')
         .skip(1)
         .map(|t| t.parse::<i64>().unwrap())
@@ -682,7 +678,7 @@ fn day6_2() {
         .next()
         .unwrap()
         .unwrap()
-        .replace(" ", "")
+        .replace(' ', "")
         .split(':')
         .skip(1)
         .map(|t| t.parse::<i64>().unwrap())
@@ -700,7 +696,7 @@ fn day6_2() {
 
         let no_win_distances = max_charge_time - min_charge_time + 1;
         println!("- {}", no_win_distances);
-        return no_win_distances as i64;
+        no_win_distances
     });
 
     let solution: i64 = ways_to_win_per_race.product();
@@ -750,29 +746,27 @@ fn day7_1() {
         if pair_count == 1 {
             return HandType::OnePair;
         }
-        return HandType::HighCard;
+        HandType::HighCard
     }
 
     fn parse_hand(hand: &str) -> Hand {
         return hand
             .chars()
-            .map(|c| {
-                return match c {
-                    '2' => 2,
-                    '3' => 3,
-                    '4' => 4,
-                    '5' => 5,
-                    '6' => 6,
-                    '7' => 7,
-                    '8' => 8,
-                    '9' => 9,
-                    'T' => 10,
-                    'J' => 11,
-                    'Q' => 12,
-                    'K' => 13,
-                    'A' => 14,
-                    _ => panic!(),
-                };
+            .map(|c| match c {
+                '2' => 2,
+                '3' => 3,
+                '4' => 4,
+                '5' => 5,
+                '6' => 6,
+                '7' => 7,
+                '8' => 8,
+                '9' => 9,
+                'T' => 10,
+                'J' => 11,
+                'Q' => 12,
+                'K' => 13,
+                'A' => 14,
+                _ => panic!(),
             })
             .collect();
     }
@@ -793,11 +787,11 @@ fn day7_1() {
             let hand_type = determine_hand_type(&hand);
             let bid = split.1;
 
-            return ParsedHand {
-                hand: hand,
-                hand_type: hand_type,
+            ParsedHand {
+                hand,
+                hand_type,
                 bid: bid.parse().unwrap(),
-            };
+            }
         })
         .collect();
 
@@ -817,15 +811,15 @@ fn day7_1() {
 
             return first_ineq_card.0.cmp(first_ineq_card.1);
         }
-        return a.hand_type.cmp(&b.hand_type);
+        a.hand_type.cmp(&b.hand_type)
     });
 
     for hand in &all_hands {
         println!("- {:?}", hand);
     }
-    let sum = all_hands.iter().enumerate().fold(0 as i64, |acc, e| {
+    let sum = all_hands.iter().enumerate().fold(0_i64, |acc, e| {
         let rank = e.0 + 1;
-        return acc + (rank as i64) * e.1.bid;
+        acc + (rank as i64) * e.1.bid
     });
     println!("{}", sum);
 }
@@ -866,7 +860,7 @@ fn day7_2() {
         hand_bins.insert(best_card, best_card_count + jokers);
         let mut sorted_counts: Vec<_> = hand_bins.values().collect();
         sorted_counts.sort_unstable_by(|a, b| b.cmp(a));
-        return match sorted_counts[0] {
+        match sorted_counts[0] {
             5 => HandType::FiveOfAKind,
             4 => HandType::FourOfAKind,
             3 => match sorted_counts[1] {
@@ -881,7 +875,7 @@ fn day7_2() {
             },
             1 => HandType::HighCard,
             _ => panic!(),
-        };
+        }
     }
 
     fn parse_hand(hand: &str) -> Hand {
@@ -916,12 +910,12 @@ fn day7_2() {
             let hand_type = determine_hand_type(&hand);
             let bid = split.1;
 
-            return ParsedHand {
+            ParsedHand {
                 hand,
                 hand_text: hand_str.to_string(),
                 hand_type,
                 bid: bid.parse().unwrap(),
-            };
+            }
         })
         .collect();
 
@@ -934,15 +928,15 @@ fn day7_2() {
         if a.hand_type == b.hand_type {
             return a.hand.cmp(&b.hand);
         }
-        return a.hand_type.cmp(&b.hand_type);
+        a.hand_type.cmp(&b.hand_type)
     });
 
     for hand in &all_hands {
         println!("- {:?}", hand);
     }
-    let sum = all_hands.iter().enumerate().fold(0 as i64, |acc, e| {
+    let sum = all_hands.iter().enumerate().fold(0_i64, |acc, e| {
         let rank = e.0 + 1;
-        return acc + (rank as i64) * e.1.bid;
+        acc + (rank as i64) * e.1.bid
     });
     println!("{}", sum);
 }
@@ -968,7 +962,7 @@ fn day8_1() {
         let instr = line.unwrap();
         let instr_s = instr.as_str();
         let (_, [this_node, next_node_l, next_node_r]) =
-            instr_re.captures(&instr_s).unwrap().extract();
+            instr_re.captures(instr_s).unwrap().extract();
         node_map.insert(
             this_node.to_string(),
             Node {
@@ -1016,7 +1010,7 @@ fn day8_2() {
         let instr = line.unwrap();
         let instr_s = instr.as_str();
         let (_, [this_node, next_node_l, next_node_r]) =
-            instr_re.captures(&instr_s).unwrap().extract();
+            instr_re.captures(instr_s).unwrap().extract();
         node_map.insert(
             this_node.to_string(),
             Node {
@@ -1028,27 +1022,27 @@ fn day8_2() {
 
     let mut cur_nodes: Vec<_> = node_map
         .keys()
-        .filter(|k| k.ends_with("A"))
-        .map(|k| k.clone())
+        .filter(|k| k.ends_with('A'))
+        .cloned()
         .collect();
     let mut steps = 0;
-    while !cur_nodes.iter().all(|n| n.ends_with("Z")) {
+    while !cur_nodes.iter().all(|n| n.ends_with('Z')) {
         let next_lr = lr_iter.next().unwrap();
         cur_nodes = cur_nodes
             .iter()
             .map(|cur_node| {
                 let instr = node_map.get(cur_node.as_str()).unwrap();
-                return match next_lr {
+                match next_lr {
                     'L' => &instr.next_l,
                     'R' => &instr.next_r,
                     _ => panic!(),
                 }
-                .to_string();
+                .to_string()
             })
             .collect();
 
         for (i, node) in cur_nodes.iter().enumerate() {
-            if node.ends_with("Z") {
+            if node.ends_with('Z') {
                 println!("[{}] {}: OK in step {}", i, node, steps);
                 // Now use calculator... :)
             }
@@ -1120,7 +1114,7 @@ fn day9_2() {
             before.insert(0, new_el);
         }
         println!("{:?}", histories);
-        return histories[0][0];
+        histories[0][0]
     });
     let sum: i32 = next_vals.sum();
     println!("{}", sum);
@@ -1260,7 +1254,7 @@ fn day10() {
                     outgoing_direction: None,
                 })
                 .collect();
-            return row;
+            row
         })
         .collect();
 
@@ -1484,5 +1478,6 @@ mod day24;
 mod util;
 
 fn main() {
-    day24::part2();
+    // 23738616
+    day5_2();
 }

@@ -25,7 +25,7 @@ impl SearchState {
             return None;
         }
         Some(SearchState {
-            pos: self.pos.advance_in_grid(dir, &grid)?,
+            pos: self.pos.advance_in_grid(dir, grid)?,
             dir: Some(dir),
             steps_in_dir: new_steps,
         })
@@ -60,7 +60,7 @@ impl SearchState {
         let mut cost = 0;
         let mut new_pos = self.pos;
         for _ in 0..advance_by {
-            new_pos = new_pos.advance_in_grid(new_dir, &grid)?;
+            new_pos = new_pos.advance_in_grid(new_dir, grid)?;
             cost += grid[new_pos.as_grid_pos()] as usize;
         }
         Some((
