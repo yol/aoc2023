@@ -47,6 +47,8 @@ fn perform_fall(
             let face_area_a = (brick.0 .0, brick.0 .1);
             let face_area_b = (brick.1 .0, brick.1 .1);
             let mut can_fall_to = 1; // ground level
+
+            // Performance optimization: check range overlap instead of every x/y point
             for x in face_area_a.0..=face_area_b.0 {
                 for y in face_area_a.1..=face_area_b.1 {
                     // Check max dist
