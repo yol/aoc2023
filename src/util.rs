@@ -10,6 +10,7 @@ use std::str::FromStr;
 
 use grid::Grid;
 use itertools::Itertools;
+use num::Integer;
 
 pub fn parse_ints<T>(s: &str) -> Vec<T>
 where
@@ -129,6 +130,13 @@ pub struct Position {
 impl Position {
     pub fn as_grid_pos(self) -> (usize, usize) {
         (self.y as usize, self.x as usize)
+    }
+
+    pub fn as_grid_pos_in_repeating_grid<T>(self, grid: &Grid<T>) -> (usize, usize) {
+        (
+            (self.y.mod_floor(&(grid.rows() as isize))) as usize,
+            (self.x.mod_floor(&(grid.cols() as isize))) as usize,
+        )
     }
 
     pub fn advance_in_dir_by(self, dir: Direction, extent: isize) -> Position {
