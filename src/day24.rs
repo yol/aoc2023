@@ -8,9 +8,9 @@ struct Vec3D {
     z: f64,
 }
 
-impl Vec3D {
-    fn from_vec(v: Vec<f64>) -> Vec3D {
-        Vec3D {
+impl From<Vec<f64>> for Vec3D {
+    fn from(v: Vec<f64>) -> Self {
+        Self {
             x: v[0],
             y: v[1],
             z: v[2],
@@ -24,18 +24,22 @@ struct Stone {
     velocity: Vec3D,
 }
 
-pub fn part1() {
-    let lines = file_lines("inp24_2.txt");
-    let stones = lines
+fn parse_stones(lines: &[String]) -> Vec<Stone> {
+    lines
         .iter()
         .map(|l| {
             let (p, v) = l.split_once('@').unwrap();
             Stone {
-                pos: Vec3D::from_vec(parse_ints(p)),
-                velocity: Vec3D::from_vec(parse_ints(v)),
+                pos: parse_ints(p).into(),
+                velocity: parse_ints(v).into(),
             }
         })
-        .collect_vec();
+        .collect_vec()
+}
+
+pub fn part1() {
+    let lines = file_lines("inp24_2.txt");
+    let stones = parse_stones(&lines);
 
     const MIN_COORD: f64 = 200000000000000.0;
     const MAX_COORD: f64 = 400000000000000.0;
@@ -70,5 +74,17 @@ pub fn part1() {
 }
 
 pub fn part2() {
-    let lines = file_lines("inp24_1.txt");
+    let lines = file_lines("inp24_2.txt");
+    let stones = parse_stones(&lines);
+
+    // First try: Solve with sage -> see day24_p2.ipynb
+    (1..=3).for_each(|i| {
+        let s = &stones[i];
+        println!("x{} = {}", i, s.pos.x);
+        println!("y{} = {}", i, s.pos.y);
+        println!("z{} = {}", i, s.pos.z);
+        println!("vx{} = {}", i, s.velocity.x);
+        println!("vy{} = {}", i, s.velocity.y);
+        println!("vz{} = {}", i, s.velocity.z);
+    });
 }

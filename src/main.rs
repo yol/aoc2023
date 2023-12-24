@@ -1484,5 +1484,5 @@ mod day24;
 mod util;
 
 fn main() {
-    day24::part1();
+    day24::part2();
 }
