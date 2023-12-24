@@ -17,6 +17,7 @@ version = "0.1.0"
 dependencies = [
  "enum-iterator",
  "grid",
+ "indexmap",
  "indicatif",
  "itertools",
  "line_drawing",
@@ -26,6 +27,7 @@ dependencies = [
  "rand",
  "rayon",
  "regex",
+ "rustc-hash",
 ]
 
 [[package]]

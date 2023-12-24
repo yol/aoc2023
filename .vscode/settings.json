@@ -1,0 +1,14 @@
+{
+    "rust-analyzer.diagnostics.warningsAsHint": [
+        "dead_code",
+    ],
+    "rust-analyzer.check.overrideCommand": [
+        "cargo",
+        "clippy",
+        "--message-format=json"
+    ],
+    "lldb.displayFormat": "auto",
+    "lldb.showDisassembly": "never",
+    "lldb.dereferencePointers": true,
+    "lldb.consoleMode": "commands"
+}
