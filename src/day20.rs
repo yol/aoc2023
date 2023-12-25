@@ -267,6 +267,7 @@ pub fn part2() {
         }
     }
 
+    // Output for graphviz to show the graph
     println!("digraph {{");
 
     for module in &modules {
