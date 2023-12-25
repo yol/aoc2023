@@ -1,18 +1,14 @@
-use std::{
-    fs::File,
-    process::{Command, Stdio},
-};
-
 use crate::util::file_lines;
 use itertools::Itertools;
 use petgraph::{
-    algo::connected_components,
-    dot::Dot,
-    graph::UnGraph,
-    prelude::NodeIndex,
-    visit::{EdgeRef, NodeRef},
+    algo::connected_components, dot::Dot, graph::UnGraph, prelude::NodeIndex, visit::EdgeRef,
 };
-use std::io::Write;
+use std::{
+    collections::BTreeSet,
+    fs::File,
+    io::Write,
+    process::{Command, Stdio},
+};
 
 fn graph_to_svg(graph: &UnGraph<String, u32>, filename: &str) {
     let mut dot = Command::new("dot")
@@ -52,117 +48,146 @@ pub fn part1() {
         }
     }
 
-    graph_to_svg(&graph, "day25_graph.svg");
-
     // Sanity check that we parsed the graph correctly
     assert_eq!(1, connected_components(&graph));
     let node_count = graph.node_count();
 
-    // STOER, M., & WAGNER, F. (1997). A Simple Min-Cut Algorithm. Journal of the ACM, 44(4), 585-591.
-    fn minimum_cut_phase(graph: &mut UnGraph<String, u32>, start_node: NodeIndex) -> (String, u32) {
-        let mut subgroup = vec![start_node];
-        while subgroup.len() != graph.node_count() {
-            let nodes_not_in_subgroup =
-                graph.node_indices().filter(|node| !subgroup.contains(node));
-
-            let most_tightly_connected_node = nodes_not_in_subgroup
-                .max_by_key(|node| {
-                    let edges_to_nodes_in_subgroup = graph.edges(*node).filter(|edge| {
-                        subgroup.contains(&edge.target()) || subgroup.contains(&edge.source())
-                    });
-
-                    // Sum of all weights of edges to nodes in subgroup
-                    edges_to_nodes_in_subgroup
-                        .map(|edge| edge.weight())
-                        .sum::<u32>()
-                })
-                .unwrap();
-
-            subgroup.push(most_tightly_connected_node);
-        }
-
-        // Merge last two nodes
-        // here: Merge node b into node a
-        let (merge_a, merge_b) = (subgroup[subgroup.len() - 2], subgroup[subgroup.len() - 1]);
-        // Remember cut of the phase
-        let cut_of_the_phase = (
-            graph.node_weight(merge_b).unwrap().clone(),
-            graph.edges(merge_b).map(|edge| edge.weight()).sum(),
-        );
-        let merge_b_name = graph.node_weight(merge_b).unwrap().clone();
-
-        // Gather information for updating node a to make borrow checker happy
-        let edges_b = graph
-            .edges(merge_b)
-            // Ignore edges between nodes a and b
-            .filter(|edge| edge.target() != merge_a && edge.source() != merge_a)
-            // Gather other end of edge (might be source or target) and weight
-            .map(|edge| {
-                (
-                    if edge.target() == merge_b {
-                        edge.source()
-                    } else {
-                        edge.target()
-                    },
-                    *edge.weight(),
-                )
-            })
-            .collect_vec();
-        // Update node a
-        for edge in edges_b {
-            let edge_from_a = graph.find_edge(merge_a, edge.0);
-            match edge_from_a {
-                None => {
-                    graph.add_edge(merge_a, edge.0, edge.1);
-                }
-                Some(edge_from_a) => {
-                    graph[edge_from_a] += edge.1;
-                }
-            };
-        }
-
-        //let cut_of_the_phase: u32 = graph.edges(merge_a).map(|edge| edge.weight()).sum();
-        // Update name of node a
-        graph[merge_a] += ",";
-        graph[merge_a] += &merge_b_name;
-
-        // Remove node b
-        graph.remove_node(merge_b);
-
-        cut_of_the_phase
-    }
-
-    fn minimum_cut(graph: &mut UnGraph<String, u32>) -> (String, u32) {
-        let start_node = graph.node_indices().next().unwrap();
-        let mut min_cut_of_the_phase: Option<(String, u32)> = None;
-        let mut i = 1;
-        while graph.node_count() > 1 {
-            println!("{}", graph.node_count());
-            let cut_of_the_phase = minimum_cut_phase(graph, start_node);
-            //println!("{:?}", cut_of_the_phase);
-            // TODO better pattern for this
-            if let Some(min_cut_of_the_phase_v) = &min_cut_of_the_phase {
-                if cut_of_the_phase.1 < min_cut_of_the_phase_v.1 {
-                    min_cut_of_the_phase = Some(cut_of_the_phase);
-                }
-            } else {
-                min_cut_of_the_phase = Some(cut_of_the_phase);
-            }
-            //graph_to_svg(graph, &format!("day25_graph{}.svg", i));
-            i += 1;
-        }
-        min_cut_of_the_phase.unwrap()
+    if node_count < 100 {
+        graph_to_svg(&graph, "day25_graph.svg");
     }
 
     let min_cut = minimum_cut(&mut graph);
-    println!("{:?}", min_cut);
+    println!("Minimum cut: {:?}", min_cut);
+    // All edges have weight 1 and the solution requires to cut exactly 3 edges
+    // -> weight of the minimum cut has to be 3.
     assert_eq!(3, min_cut.1);
-    let node_size_a = min_cut.0.split(',').count();
-    let node_size_b = node_count - node_size_a;
-    println!("{} / {}", node_size_a, node_size_b);
-    println!("{:?}", node_size_a * node_size_b);
+
+    let nodes_a = min_cut.0.split(',');
+    let node_count_a = nodes_a.count();
+    let node_count_b = node_count - node_count_a;
+    println!(
+        "{} / {} -> {}",
+        node_count_a,
+        node_count_b,
+        node_count_a * node_count_b
+    );
+}
+
+// STOER, M., & WAGNER, F. (1997). A Simple Min-Cut Algorithm. Journal of the ACM, 44(4), 585-591.
+
+fn minimum_cut_phase(graph: &mut UnGraph<String, u32>, start_node: NodeIndex) -> (String, u32) {
+    let mut subgroup = BTreeSet::from_iter([start_node]);
+    let mut not_subgroup = BTreeSet::from_iter(graph.node_indices().filter(|&n| n != start_node));
+
+    // Loop will run at least once, setting s
+    let mut s = NodeIndex::default();
+    let mut t = start_node;
+
+    while subgroup.len() != graph.node_count() {
+        let most_tightly_connected_node =
+            find_most_tightly_connected_node(graph, &subgroup, &not_subgroup);
+
+        subgroup.insert(most_tightly_connected_node);
+        not_subgroup.remove(&most_tightly_connected_node);
+
+        s = t;
+        t = most_tightly_connected_node;
+    }
+
+    // Remember cut of the phase
+    let cut_of_the_phase = (
+        graph.node_weight(t).unwrap().clone(),
+        graph.edges(t).map(|edge| edge.weight()).sum(),
+    );
+
+    // Merge last two nodes
+    // here: Merge node t into node s
+    merge_nodes(graph, s, t);
+
+    cut_of_the_phase
+}
+
+fn minimum_cut(graph: &mut UnGraph<String, u32>) -> (String, u32) {
+    // Choose first node as initial node "a"
+    let start_node = graph.node_indices().next().unwrap();
+    let mut min_cut: Option<(String, u32)> = None;
+    while graph.node_count() > 1 {
+        println!("{}", graph.node_count());
+        let cut_of_the_phase = minimum_cut_phase(graph, start_node);
+        min_cut = match min_cut {
+            // First round
+            None => Some(cut_of_the_phase),
+            // Better cut
+            Some(prev_min_cut) if cut_of_the_phase.1 < prev_min_cut.1 => Some(cut_of_the_phase),
+            // Worse or same weight cut
+            Some(prev_min_cut) => Some(prev_min_cut),
+        };
+    }
+    min_cut.unwrap()
+}
+
+fn merge_nodes(graph: &mut UnGraph<String, u32>, s: NodeIndex, t: NodeIndex) {
+    let t_name = graph.node_weight(t).unwrap().clone();
+
+    // Gather information for updating nodes to make borrow checker happy
+    let edges_t = graph
+        .edges(t)
+        // Ignore edges between nodes s and t
+        .filter(|edge| edge.target() != s && edge.source() != s)
+        // Gather other end of edge (might be source or target) and weight
+        .map(|edge| {
+            (
+                if edge.target() == t {
+                    edge.source()
+                } else {
+                    edge.target()
+                },
+                *edge.weight(),
+            )
+        })
+        .collect_vec();
+    // Update node s
+    for edge in edges_t {
+        let edge_from_s = graph.find_edge(s, edge.0);
+        match edge_from_s {
+            None => {
+                graph.add_edge(s, edge.0, edge.1);
+            }
+            Some(edge_from_s) => {
+                graph[edge_from_s] += edge.1;
+            }
+        };
+    }
+
+    // Update name of node s
+    graph[s] += ",";
+    graph[s] += &t_name;
+
+    // Remove node t
+    graph.remove_node(t);
+}
+
+fn find_most_tightly_connected_node(
+    graph: &mut UnGraph<String, u32>,
+    subgroup: &BTreeSet<NodeIndex>,
+    not_subgroup: &BTreeSet<NodeIndex>,
+) -> NodeIndex {
+    *not_subgroup
+        .iter()
+        .max_by_key(|&node| {
+            let edges_to_nodes_in_subgroup = graph.edges(*node).filter(|edge| {
+                (edge.target() != *node && subgroup.contains(&edge.target()))
+                    || (edge.source() != *node && subgroup.contains(&edge.source()))
+            });
+
+            // Sum of all weights of edges to nodes in subgroup
+            edges_to_nodes_in_subgroup
+                .map(|edge| edge.weight())
+                .sum::<u32>()
+        })
+        .unwrap()
 }
 
 pub fn part2() {
-    let lines = file_lines("inp25_1.txt");
+    // trololo
 }
